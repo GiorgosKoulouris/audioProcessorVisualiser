@@ -2,7 +2,8 @@
 ================================== USAGE ===============================
 
 Intended Usage (with implemented functionality):
-    1. Choose start and end times (in secs) and click import to load the file
+    1. Click "Choose File" to select an audio file to use
+    1. Define start and end times (in secs) and click "Process Part" to process the selected section
     2. Click the Plot Gain button to show a plot of Gain over Time
         --> checking the checkbutton on the left also plots the original and processed signal
 
@@ -16,6 +17,7 @@ import matplotlib.pyplot as plt
 from tkinter import Tk
 from tkinter.ttk import Button, Label, Entry, Checkbutton
 from tkinter.filedialog import askopenfilename
+import gc
 
 # ================ Global Variables =====================
 # Path
@@ -23,6 +25,14 @@ fileImported = False
 importPath = "~/Desktop"
 
 # File and Signal related
+global sampleRate
+global convertToMono
+global inputS
+global startTime
+global endTime
+global durationInSecs
+global output
+
 sampleRate = 44100
 convertToMono = False
 inputS = np.zeros(sampleRate)
@@ -31,34 +41,78 @@ endTime = 4
 durationInSecs = endTime - startTime
 output = inputS.copy
 
+# Variables for parameters
+param1 = 0
+param2 = 0
+param3 = 0
+param4 = 0
+
 # Plotting options
 includeWavesInGainPlot = False
 
-# =================== Function Definitions ============
-# Import an audio file
-def importFile():
-    """Import the selected file"""
-    rangeIsCorrect = ((int(startTime.get())) >= 0) and ((int(endTime.get()) > int(startTime.get())))
-    if rangeIsCorrect:
-        tempPath = askopenfilename()
-        if tempPath.endswith(".wav"):
-            global importPath
-            global sampleRate
-            global inputS
-            global durationInSecs
-            global output
+# =================== Function Definitions =================
 
-            importPath = tempPath
+# Choose an audio file
+def chooseFile():
+    """Display pop-up window to let user select an audio file"""
+    tempPath = askopenfilename()
+    if tempPath.endswith(".wav"):
+        global importPath
+        importPath = tempPath
+        global fileImported
+        fileImported = True
+    del tempPath
 
-            durationInSecs = int(endTime.get()) - int(startTime.get())
-            inputS, sampleRate = lr.load(importPath, sr=None, offset=20, mono=True, duration=durationInSecs)
-            output = processAudio(inputS)
+# === Processing function and it's helpers ===
 
-            global fileImported
-            fileImported = True
+# setMonoButton command
+def setMonoConversion():
+    global convertToMono
+    if convertToMono:
+        convertToMono = False
+    else:
+        convertToMono = True
+
+# Process the audio file
+def processAudio():
+    """Process the selected range with the given settings"""
+    """Range = Start - End
+    Resample = True or False (needs new sampleRate if True)
+    convertToMono = True or False"""
+    rS = int(startTime.get())
+    rE = int(endTime.get())
+    rangeIsCorrect = (rS >= 0) and (rE > rS)
+    if rangeIsCorrect and fileImported:
+        global sampleRate
+        global inputS
+        global durationInSecs
+        global output
+
+        del inputS
+        gc.collect()
+
+        durationInSecs = rE - rS
+        inputS, sampleRate = lr.load(importPath, sr=None, offset=rS, mono=convertToMono, duration=durationInSecs)
+
+        global param1
+        global param2
+        global param3
+        global param4
+
+        par1 = param1.get()
+        par2 = param2.get()
+        par3 = param3.get()
+        par4 = param4.get()
+
+        par1 = float(par1.strip())
+        par2 = float(par2.strip())
+        par3 = float(par3.strip())
+        par4 = float(par4.strip())
+
+        applyCustomCode(par1, par2, par3, par4)
 
 # User will actually override this function
-def processAudio(signal):
+def applyCustomCode(p1, p2, p3, p4):
     """Processes the section of the audio file that was loaded"""
     # Sample code, for demonstration purposes
 
@@ -68,15 +122,14 @@ def processAudio(signal):
     """
 
     # User inputS
-    thresholdInGain = .7
-    release = 250
+    thresholdInGain = p1
+    release = p2
 
     # Calculations
     releaseDelta = 1 / ((release / 1000) * sampleRate)
     maxGainR = 0
     previousGain = 1
-    out = signal.copy()
-    gain = 1
+    out = np.zeros(len(inputS))
     for sample in range(len(out)):
         if abs(out[sample]) >= thresholdInGain:
             tempGain2 = thresholdInGain / abs(out[sample])
@@ -106,13 +159,17 @@ def processAudio(signal):
 # ================= Plotting functions ======================
 
 # Plot single waveform
-def plotWaveform(signal, label):
+def plotWaveform():
+    global inputS
     x = np.linspace(0, durationInSecs, len(inputS))
     fig, ax = plt.subplots(1, 1, num="Single Waveform")
-    ax.plot(x, signal, color='g', label=label)
+    ax.plot(x, inputS, color='g', label="in")
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Sample value")
     fig.show()
+
+    del x, fig, ax
+    gc.collect()
 
 # Plot both inputS and output
 def plotStackedWaveforms():
@@ -122,6 +179,9 @@ def plotStackedWaveforms():
     ax.plot(x, output, color='b', label='Output')
 
     fig.show()
+
+    del x, fig, ax
+    gc.collect()
 
 # Function for includeWavesInGainPlotButton
 def setIncludeWavesInGain():
@@ -155,45 +215,92 @@ def plotGain():
             ax[1].plot(x, output, color='b', label='y2')
             ax[1].set_ylabel("Sample value")
             plt.xlabel("Time (s)")
+            plt.legend()
+            plt.show()
+            del fig, ax, x, g
+            gc.collect()
 
         else:
             fig, ax = plt.subplots(1, 1, num="Gain Over Time")
             ax.plot(x, g, color='r', label='Gain')
             plt.xlabel("Time (s)")
             plt.ylabel("Gain Value")
+            plt.legend()
+            plt.show()
+            del fig, ax, x, g
+            gc.collect()
 
-        plt.legend()
-        plt.show()
-
-# This function initialises all GUI elements
+# ============== Initialise GUI elements =====================
 def initUI(window: Tk):
+    # Main Window
     window.geometry('600x600')
     window.title('DSP Visualiser')
 
+    # File Chooser
+    chooseFileButton = Button(window, text='Choose File', command=chooseFile)
+    chooseFileButton.place(x=20, y=10, width=135, height=30)
+
+    # ================= File processing options ===============
     global startTime
     startTime = tkinter.StringVar(window)
-    startTLabel = Label(window, text='start', justify='center')
-    startTLabel.place(x=10, y=10, width=40, height=30)
+    startTLabel = Label(window, text='Start', justify='center')
+    startTLabel.place(x=20, y=50, width=35, height=25)
     startTBox = Entry(textvariable=startTime)
-    startTBox.place(x=55, y=10, width=35, height=30)
+    startTBox.place(x=60, y=50, width=45, height=25)
 
     global endTime
     endTime = tkinter.StringVar(window)
     endTLabel = Label(window, text='end', justify='center')
-    endTLabel.place(x=100, y=10, width=30, height=30)
+    endTLabel.place(x=110, y=50, width=30, height=25)
     endTBox = Entry(textvariable=endTime)
-    endTBox.place(x=135, y=10, width=35, height=30)
+    endTBox.place(x=145, y=50, width=45, height=25)
 
-    importFileButton = Button(window, text='Import', command=importFile)
-    importFileButton.place(x=500, y=10, width=75, height=30)
+    global convertToMono
+    convertToMono = False
+    monoButton = Checkbutton(command=setMonoConversion)
+    monoButton.place(x=200, y=52, width=20, height=20)
 
+    # ================== Parameters section ===================
+    global param1
+    param1 = tkinter.StringVar(window)
+    p1Label = Label(window, text='P1', justify='center')
+    p1Label.place(x=230, y=50, width=20, height=25)
+    p1TextBox = Entry(textvariable=param1)
+    p1TextBox.place(x=255, y=50, width=40, height=25)
+
+    global param2
+    param2 = tkinter.StringVar(window)
+    p2Label = Label(window, text='P2', justify='center')
+    p2Label.place(x=305, y=50, width=20, height=25)
+    p2TextBox = Entry(textvariable=param2)
+    p2TextBox.place(x=330, y=50, width=40, height=25)
+
+    global param3
+    param3 = tkinter.StringVar(window)
+    p3Label = Label(window, text='P3', justify='center')
+    p3Label.place(x=380, y=50, width=20, height=25)
+    p3TextBox = Entry(textvariable=param3)
+    p3TextBox.place(x=405, y=50, width=40, height=25)
+
+    global param4
+    param4 = tkinter.StringVar(window)
+    p4Label = Label(window, text='P4', justify='center')
+    p4Label.place(x=455, y=50, width=20, height=25)
+    p4TextBox = Entry(textvariable=param4)
+    p4TextBox.place(x=480, y=50, width=40, height=25)
+
+    # Process Part
+    processAudioButton = Button(window, text='Process Part', command=processAudio)
+    processAudioButton.place(x=20, y=80, width=150, height=25)
+
+    # ===================== Plotting options ====================
     global includeWavesInGainPlot
     includeWavesInGainPlot = False
     wavesInGainButton = Checkbutton(variable=includeWavesInGainPlot, command=setIncludeWavesInGain)
-    wavesInGainButton.place(x=50, y=50, width=35, height=35)
+    wavesInGainButton.place(x=50, y=150, width=35, height=35)
 
     plotGainButton = Button(window, text='Plot gain over time', command=plotGain)
-    plotGainButton.place(x=120, y=50, width=200, height=35)
+    plotGainButton.place(x=120, y=150, width=200, height=35)
 
 
 # ========== App loop =============

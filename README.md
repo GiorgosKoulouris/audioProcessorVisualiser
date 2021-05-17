@@ -34,7 +34,7 @@ If you install the dependencies in an environment with wheel installed, an empty
 
 ---
 
-###Contributing
+### Contributing
 
 Please, keep in mind that I started the AudioProcessor Visualiser project (as well as learning Python) as a side project 
 to help myself fine tune my C++ DSP coding. Plus, I have minimal experience in the fields of Software and Computer Engineering. 
