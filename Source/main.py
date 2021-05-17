@@ -18,21 +18,16 @@ from tkinter import Tk
 from tkinter.ttk import Button, Label, Entry, Checkbutton
 from tkinter.filedialog import askopenfilename
 import gc
+from parameter import ParameterFrame
 
 # ================ Global Variables =====================
+
+
 # Path
 fileImported = False
 importPath = "~/Desktop"
 
 # File and Signal related
-global sampleRate
-global convertToMono
-global inputS
-global startTime
-global endTime
-global durationInSecs
-global output
-
 sampleRate = 44100
 convertToMono = False
 inputS = np.zeros(sampleRate)
@@ -40,12 +35,6 @@ startTime = 0
 endTime = 4
 durationInSecs = endTime - startTime
 output = inputS.copy
-
-# Variables for parameters
-param1 = 0
-param2 = 0
-param3 = 0
-param4 = 0
 
 # Plotting options
 includeWavesInGainPlot = False
@@ -94,28 +83,29 @@ def processAudio():
         durationInSecs = rE - rS
         inputS, sampleRate = lr.load(importPath, sr=None, offset=rS, mono=convertToMono, duration=durationInSecs)
 
-        global param1
-        global param2
-        global param3
-        global param4
+        par1 = par2 = par3 = par4 = 0
+        global p1Frame
+        global p2Frame
+        global p3Frame
+        global p4Frame
+        if p1Frame.choice != 0:
+            par1 = p1Frame.getValue()
+        if p2Frame.choice != 0:
+            par2 = p2Frame.getValue()
+        if p3Frame.choice != 0:
+            par3 = p3Frame.getValue()
+        if p4Frame.choice != 0:
+            par4 = p4Frame.getValue()
 
-        par1 = param1.get()
-        par2 = param2.get()
-        par3 = param3.get()
-        par4 = param4.get()
-
-        par1 = float(par1.strip())
-        par2 = float(par2.strip())
-        par3 = float(par3.strip())
-        par4 = float(par4.strip())
-
-        applyCustomCode(par1, par2, par3, par4)
+        global output
+        del output
+        output = applyCustomCode(par1, par2, par3, par4)
 
 # User will actually override this function
 def applyCustomCode(p1, p2, p3, p4):
     """Processes the section of the audio file that was loaded"""
-    # Sample code, for demonstration purposes
 
+    # Sample code, for demonstration purposes
     """
     Hard-clips the signal @ threshold and starts increasing  gain when 
     gain[x] > gain[x-1] (even if > threshold)
@@ -260,35 +250,6 @@ def initUI(window: Tk):
     monoButton = Checkbutton(command=setMonoConversion)
     monoButton.place(x=200, y=52, width=20, height=20)
 
-    # ================== Parameters section ===================
-    global param1
-    param1 = tkinter.StringVar(window)
-    p1Label = Label(window, text='P1', justify='center')
-    p1Label.place(x=230, y=50, width=20, height=25)
-    p1TextBox = Entry(textvariable=param1)
-    p1TextBox.place(x=255, y=50, width=40, height=25)
-
-    global param2
-    param2 = tkinter.StringVar(window)
-    p2Label = Label(window, text='P2', justify='center')
-    p2Label.place(x=305, y=50, width=20, height=25)
-    p2TextBox = Entry(textvariable=param2)
-    p2TextBox.place(x=330, y=50, width=40, height=25)
-
-    global param3
-    param3 = tkinter.StringVar(window)
-    p3Label = Label(window, text='P3', justify='center')
-    p3Label.place(x=380, y=50, width=20, height=25)
-    p3TextBox = Entry(textvariable=param3)
-    p3TextBox.place(x=405, y=50, width=40, height=25)
-
-    global param4
-    param4 = tkinter.StringVar(window)
-    p4Label = Label(window, text='P4', justify='center')
-    p4Label.place(x=455, y=50, width=20, height=25)
-    p4TextBox = Entry(textvariable=param4)
-    p4TextBox.place(x=480, y=50, width=40, height=25)
-
     # Process Part
     processAudioButton = Button(window, text='Process Part', command=processAudio)
     processAudioButton.place(x=20, y=80, width=150, height=25)
@@ -305,6 +266,15 @@ def initUI(window: Tk):
 
 # ========== App loop =============
 mainWindow = Tk()
+# GUI
+p1Frame = ParameterFrame(mainWindow, 1)
+p1Frame.draw(240, 48, 40, 55)
+p2Frame = ParameterFrame(mainWindow, 2)
+p2Frame.draw(300, 48, 40, 55)
+p3Frame = ParameterFrame(mainWindow, 3)
+p3Frame.draw(360, 48, 40, 55)
+p4Frame = ParameterFrame(mainWindow, 4)
+p4Frame.draw(420, 48, 40, 55)
 initUI(mainWindow)
 
 mainWindow.mainloop()

@@ -2,3 +2,4 @@ venv/
 Rest/
 .idea/
 Source/tests.py
+Source/__pycache__/

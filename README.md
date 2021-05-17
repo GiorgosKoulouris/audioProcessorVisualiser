@@ -39,12 +39,9 @@ If you install the dependencies in an environment with wheel installed, an empty
 Please, keep in mind that I started the AudioProcessor Visualiser project (as well as learning Python) as a side project 
 to help myself fine tune my C++ DSP coding. Plus, I have minimal experience in the fields of Software and Computer Engineering. 
 So please feel free to contribute either by proposing changes and features (by commenting or via a pull request), or just 
-by commenting out bad code craftsmanship!!
+by commenting out bad code craftsmanship.
 
-I mainly post my progress on the [dev](https://github.com/GiorgosKoulouris/audioProcessorVisualiser/tree/dev) branch. 
-Although I make regular merges to the [main](https://github.com/GiorgosKoulouris/audioProcessorVisualiser/tree/main), 
-in case of pull requests make sure to rebase against [dev](https://github.com/GiorgosKoulouris/audioProcessorVisualiser/tree/dev)
-before submitting the pull request.
+
 
 ***
 
