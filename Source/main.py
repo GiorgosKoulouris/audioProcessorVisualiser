@@ -3,13 +3,13 @@
 
 Intended Usage (with implemented functionality):
     1. Click "Choose File" to select an audio file to use
-    1. Define start and end times (in secs) and click "Process Part" to process the selected section
+    2. Define start and end times (in secs) and click "Process Part" to process the selected section
+    3. Write your own code for the signal processing and press updateButton
     2. Click the Plot Gain button to show a plot of Gain over Time
         --> checking the checkbutton on the left also plots the original and processed signal
 
 ===============================================================================
 """
-
 import tkinter
 import librosa as lr
 import numpy as np
@@ -17,12 +17,12 @@ import matplotlib.pyplot as plt
 from tkinter import Tk
 from tkinter.ttk import Button, Label, Entry, Checkbutton
 from tkinter.filedialog import askopenfilename
-import gc
-from parameter import ParameterFrame
+from tkinter.scrolledtext import ScrolledText
+import gc, os
+from parameterFrame import ParameterFrame
+from Assets.userCode import userCode
 
 # ================ Global Variables =====================
-
-
 # Path
 fileImported = False
 importPath = "~/Desktop"
@@ -53,7 +53,6 @@ def chooseFile():
     del tempPath
 
 # === Processing function and it's helpers ===
-
 # setMonoButton command
 def setMonoConversion():
     global convertToMono
@@ -99,52 +98,44 @@ def processAudio():
 
         global output
         del output
-        output = applyCustomCode(par1, par2, par3, par4)
+        output = inputS.copy()
+        userCode(inputS, output, 1, len(inputS), sampleRate, par1, par2, par3, par4)
 
-# User will actually override this function
+
+# === customCode functions and it's helpers ===
 def applyCustomCode(p1, p2, p3, p4):
     """Processes the section of the audio file that was loaded"""
 
-    # Sample code, for demonstration purposes
-    """
-    Hard-clips the signal @ threshold and starts increasing  gain when 
-    gain[x] > gain[x-1] (even if > threshold)
-    """
+def updateCodeBlock():
+    userIn = codeBox.get("1.0", 'end-1c')
+    codeFilePath = os.getcwd() + '/Assets/userCode.py'
+    with open(codeFilePath, 'w') as userPy:
+        userPy.write(userIn)
+        userPy.close()
 
-    # User inputS
-    thresholdInGain = p1
-    release = p2
+def createCustomCodeFile():
+    codeFilePath = os.getcwd() + '/Assets/userCode.py'
+    with open(codeFilePath, 'w') as userPy:
+        userPy.write('def userCode(input, output, numChannels, numSamples, sampleRate, p1, p2, p3, p4):\n')
+        userPy.write('    # You get an ndarray with a shape of {numChannels, numSamples} as an input\n\n')
 
-    # Calculations
-    releaseDelta = 1 / ((release / 1000) * sampleRate)
-    maxGainR = 0
-    previousGain = 1
-    out = np.zeros(len(inputS))
-    for sample in range(len(out)):
-        if abs(out[sample]) >= thresholdInGain:
-            tempGain2 = thresholdInGain / abs(out[sample])
-            if tempGain2 > previousGain:
-                gain = previousGain + ((tempGain2 - previousGain) * releaseDelta)
-                out[sample] *= gain
-                maxGainR = 1 - gain
-            else:
-                if out[sample] > 0:
-                    out[sample] = thresholdInGain
-                    gain = out[sample] / inputS[sample]
-                    maxGainR = 1 - gain
-                else:
-                    out[sample] = -thresholdInGain
-                    gain = out[sample] / inputS[sample]
-                    maxGainR = 1 - gain
-        else:
-            if (previousGain + (maxGainR * releaseDelta)) < 1:
-                gain = previousGain + ((1 - previousGain) * releaseDelta)
-            else:
-                gain = 1
+        userPy.write('    # p1, p2, p3, p4 are the parameters set by the user.\n')
+        userPy.write('    # if P1 is disabled then p1 = 0, so it would be nice to keep an eye on it\n\n')
 
-            out[sample] *= gain
-            previousGain = gain
-    return out
+        userPy.write('    # output is the ndarray that contains your processed data. Must be same shape as input\n')
+
+        userPy.write('    output = input.copy()\n\n')
+        userPy.write('    # Your code goes here....\n\n\n\n\n\n')
+        userPy.write('    return output\n')
+
+        userPy.close()
+
+def updateCodeBox():
+    codeFilePath = os.getcwd() + '/Assets/userCode.py'
+    with open(codeFilePath, 'r') as userPy:
+        data = userPy.read()
+        codeBox.insert('1.0', data)
+        userPy.close()
 
 # ================= Plotting functions ======================
 
@@ -220,62 +211,71 @@ def plotGain():
             del fig, ax, x, g
             gc.collect()
 
-# ============== Initialise GUI elements =====================
-def initUI(window: Tk):
-    # Main Window
-    window.geometry('600x600')
-    window.title('DSP Visualiser')
-
-    # File Chooser
-    chooseFileButton = Button(window, text='Choose File', command=chooseFile)
-    chooseFileButton.place(x=20, y=10, width=135, height=30)
-
-    # ================= File processing options ===============
-    global startTime
-    startTime = tkinter.StringVar(window)
-    startTLabel = Label(window, text='Start', justify='center')
-    startTLabel.place(x=20, y=50, width=35, height=25)
-    startTBox = Entry(textvariable=startTime)
-    startTBox.place(x=60, y=50, width=45, height=25)
-
-    global endTime
-    endTime = tkinter.StringVar(window)
-    endTLabel = Label(window, text='end', justify='center')
-    endTLabel.place(x=110, y=50, width=30, height=25)
-    endTBox = Entry(textvariable=endTime)
-    endTBox.place(x=145, y=50, width=45, height=25)
-
-    global convertToMono
-    convertToMono = False
-    monoButton = Checkbutton(command=setMonoConversion)
-    monoButton.place(x=200, y=52, width=20, height=20)
-
-    # Process Part
-    processAudioButton = Button(window, text='Process Part', command=processAudio)
-    processAudioButton.place(x=20, y=80, width=150, height=25)
-
-    # ===================== Plotting options ====================
-    global includeWavesInGainPlot
-    includeWavesInGainPlot = False
-    wavesInGainButton = Checkbutton(variable=includeWavesInGainPlot, command=setIncludeWavesInGain)
-    wavesInGainButton.place(x=50, y=150, width=35, height=35)
-
-    plotGainButton = Button(window, text='Plot gain over time', command=plotGain)
-    plotGainButton.place(x=120, y=150, width=200, height=35)
-
 
 # ========== App loop =============
 mainWindow = Tk()
+
+# Main Window
+mainWindow.geometry('1200x900')
+mainWindow.title('DSP Visualiser')
+mainWindow['background'] = '#680118'
+
 # GUI
 p1Frame = ParameterFrame(mainWindow, 1)
-p1Frame.draw(240, 48, 40, 55)
+p1Frame.draw(240, 48, 40, 75)
 p2Frame = ParameterFrame(mainWindow, 2)
-p2Frame.draw(300, 48, 40, 55)
+p2Frame.draw(300, 48, 40, 75)
 p3Frame = ParameterFrame(mainWindow, 3)
-p3Frame.draw(360, 48, 40, 55)
+p3Frame.draw(360, 48, 40, 75)
 p4Frame = ParameterFrame(mainWindow, 4)
-p4Frame.draw(420, 48, 40, 55)
-initUI(mainWindow)
+p4Frame.draw(420, 48, 40, 75)
 
+# File Chooser
+chooseFileButton = Button(mainWindow, text='Choose File', command=chooseFile)
+chooseFileButton.place(x=20, y=10, width=135, height=30)
+
+# ================= File processing options ===============
+startTime = tkinter.StringVar(mainWindow)
+startTLabel = Label(mainWindow, text='Start', justify='center')
+startTLabel.place(x=20, y=50, width=35, height=25)
+startTBox = Entry(textvariable=startTime)
+startTBox.place(x=60, y=50, width=45, height=25)
+
+endTime = tkinter.StringVar(mainWindow)
+endTLabel = Label(mainWindow, text='end', justify='center')
+endTLabel.place(x=110, y=50, width=30, height=25)
+endTBox = Entry(textvariable=endTime)
+endTBox.place(x=145, y=50, width=45, height=25)
+
+convertToMono = False
+monoButton = Checkbutton(command=setMonoConversion)
+monoButton.place(x=200, y=52, width=20, height=20)
+
+# Process Part
+processAudioButton = Button(mainWindow, text='Process Part', command=processAudio)
+processAudioButton.place(x=20, y=80, width=150, height=25)
+
+# ===================== Code Entry ====================
+codeBox = ScrolledText()
+codeBox.place(x=500, y=100, width=670, height=400)
+updateCodeButton = Button(mainWindow, text='Update code', command=updateCodeBlock)
+updateCodeButton.place(x=675, y=520, width=220, height=25)
+
+# ===================== Plotting options ====================
+includeWavesInGainPlot = False
+wavesInGainButton = Checkbutton(variable=includeWavesInGainPlot, command=setIncludeWavesInGain)
+wavesInGainButton.place(x=50, y=150, width=20, height=20)
+
+plotGainButton = Button(mainWindow, text='Plot gain over time', command=plotGain)
+plotGainButton.place(x=120, y=150, width=200, height=35)
+
+# Create customCodeFile
+createCustomCodeFile()
+updateCodeBox()
+
+# ===============================================
+# start App
 mainWindow.mainloop()
+# Recreate the file so upon next import there are no errors if user misspells sth
+createCustomCodeFile()
 

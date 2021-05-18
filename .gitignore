@@ -3,3 +3,4 @@ Rest/
 .idea/
 Source/tests.py
 Source/__pycache__/
+Source/Assets/__pycache__/
