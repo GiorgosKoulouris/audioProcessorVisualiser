@@ -10,7 +10,6 @@ Intended Usage (with implemented functionality):
 
 ===============================================================================
 """
-import tkinter
 import librosa as lr
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,8 +19,9 @@ from tkinter.filedialog import askopenfilename
 from tkinter.scrolledtext import ScrolledText
 import gc, os
 from parameterFrame import ParameterFrame
-from Assets.userCode import userCode
 from renderRangeFrame import RenderRangeFrame
+import subprocess
+import pickle
 
 # ================ Global Variables =====================
 # Path
@@ -33,6 +33,8 @@ sampleRate = 44100
 convertToMono = False
 inputS = np.zeros(sampleRate)
 durationInSecs = 1
+numChannels = 2
+numSamples = sampleRate
 output = inputS.copy
 
 # Plotting options
@@ -70,12 +72,21 @@ def processAudio():
         global inputS
         global durationInSecs
         global output
+        global numChannels
+        global numSamples
 
         del inputS
         gc.collect()
 
         durationInSecs = rE - rS
         inputS, sampleRate = lr.load(importPath, sr=None, offset=rS, mono=convertToMono, duration=durationInSecs)
+
+        if convertToMono:
+            numChannels = 1
+            numSamples = len(inputS)
+        else:
+            numChannels = 2
+            numSamples = len(inputS[0])
 
         par1 = par2 = par3 = par4 = 0
         global p1Frame
@@ -93,8 +104,12 @@ def processAudio():
 
         global output
         del output
+
+        scriptPath = os.getcwd() + '/Assets/applyUserCode.py'
+        inEn = pickle.dumps(inputS)
         output = inputS.copy()
-        userCode(inputS, output, 1, len(inputS), sampleRate, par1, par2, par3, par4)
+        outEn = pickle.dumps(output)
+        subprocess.call(['python', scriptPath, inEn, outEn, numChannels, numSamples, sampleRate, par1, par2, par3, par4])
 
 # === customCode functions and it's helpers ===
 def updateCodeBlock():
@@ -131,29 +146,31 @@ def updateCodeBox():
 # ================= Plotting functions ======================
 
 # Plot single waveform
-def plotWaveform():
+def plotInWaveform():
     global inputS
-    x = np.linspace(0, durationInSecs, len(inputS))
-    fig, ax = plt.subplots(1, 1, num="Single Waveform")
-    ax.plot(x, inputS, color='g', label="in")
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Sample value")
-    fig.show()
+    if convertToMono:
+        x = np.linspace(0, durationInSecs, len(inputS))
+        fig, ax = plt.subplots(1, 1, num="Single Waveform")
+        ax.plot(x, inputS, color='g', label="in")
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Sample value")
+        fig.show()
 
     del x, fig, ax
     gc.collect()
 
 # Plot both inputS and output
 def plotStackedWaveforms():
-    x = np.linspace(0, durationInSecs, len(inputS))
-    fig, ax = plt.subplots(1, 1, num="Stacked Waveforms")
-    ax.plot(x, inputS, color='g', label='inputS')
-    ax.plot(x, output, color='b', label='Output')
+    if convertToMono:
+        x = np.linspace(0, durationInSecs, len(inputS))
+        fig, ax = plt.subplots(1, 1, num="Stacked Waveforms")
+        ax.plot(x, inputS, color='g', label='inputS')
+        ax.plot(x, output, color='b', label='Output')
 
-    fig.show()
+        fig.show()
 
-    del x, fig, ax
-    gc.collect()
+        del x, fig, ax
+        gc.collect()
 
 # Function for includeWavesInGainPlotButton
 def setIncludeWavesInGain():
@@ -168,39 +185,40 @@ def plotGain():
     """This function plots the gain reduction over time"""
     """If <includeWavesInGainPlot = True>, it also plots a stacked overview of the waveforms"""
     if fileImported:
-        g = np.zeros(len(inputS))
+        if convertToMono:
+            g = np.zeros(len(inputS))
 
-        # Quick fix to avoid division issues. Needs fixups <------
-        for sample in range(len(inputS)):
-            if inputS[sample] != 0:
-                g[sample] = output[sample] / inputS[sample]
+            # Quick fix to avoid division issues. Needs fixups <------
+            for sample in range(len(inputS)):
+                if inputS[sample] != 0:
+                    g[sample] = output[sample] / inputS[sample]
+                else:
+                    g[sample] = g[sample - 1]
+
+            x = np.linspace(0, durationInSecs, len(inputS))
+
+            if includeWavesInGainPlot:
+                fig, ax = plt.subplots(2, 1, sharex=True, num="Gain Over Time")
+                ax[0].plot(x, g, color='r', label='Gain Reduction')
+                ax[0].set_ylabel("Gain value")
+                ax[1].plot(x, inputS, color='g', label='y1')
+                ax[1].plot(x, output, color='b', label='y2')
+                ax[1].set_ylabel("Sample value")
+                plt.xlabel("Time (s)")
+                plt.legend()
+                plt.show()
+                del fig, ax, x, g
+                gc.collect()
+
             else:
-                g[sample] = g[sample - 1]
-
-        x = np.linspace(0, durationInSecs, len(inputS))
-
-        if includeWavesInGainPlot:
-            fig, ax = plt.subplots(2, 1, sharex=True, num="Gain Over Time")
-            ax[0].plot(x, g, color='r', label='Gain Reduction')
-            ax[0].set_ylabel("Gain value")
-            ax[1].plot(x, inputS, color='g', label='y1')
-            ax[1].plot(x, output, color='b', label='y2')
-            ax[1].set_ylabel("Sample value")
-            plt.xlabel("Time (s)")
-            plt.legend()
-            plt.show()
-            del fig, ax, x, g
-            gc.collect()
-
-        else:
-            fig, ax = plt.subplots(1, 1, num="Gain Over Time")
-            ax.plot(x, g, color='r', label='Gain')
-            plt.xlabel("Time (s)")
-            plt.ylabel("Gain Value")
-            plt.legend()
-            plt.show()
-            del fig, ax, x, g
-            gc.collect()
+                fig, ax = plt.subplots(1, 1, num="Gain Over Time")
+                ax.plot(x, g, color='r', label='Gain')
+                plt.xlabel("Time (s)")
+                plt.ylabel("Gain Value")
+                plt.legend()
+                plt.show()
+                del fig, ax, x, g
+                gc.collect()
 
 
 # ========== App loop =============
