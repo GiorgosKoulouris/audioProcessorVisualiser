@@ -15,12 +15,13 @@ import librosa as lr
 import numpy as np
 import matplotlib.pyplot as plt
 from tkinter import Tk
-from tkinter.ttk import Button, Label, Entry, Checkbutton
+from tkinter.ttk import Button, Checkbutton
 from tkinter.filedialog import askopenfilename
 from tkinter.scrolledtext import ScrolledText
 import gc, os
 from parameterFrame import ParameterFrame
 from Assets.userCode import userCode
+from renderRangeFrame import RenderRangeFrame
 
 # ================ Global Variables =====================
 # Path
@@ -31,13 +32,13 @@ importPath = "~/Desktop"
 sampleRate = 44100
 convertToMono = False
 inputS = np.zeros(sampleRate)
-startTime = 0
-endTime = 4
-durationInSecs = endTime - startTime
+durationInSecs = 1
 output = inputS.copy
 
 # Plotting options
 includeWavesInGainPlot = False
+
+mainWindow = Tk()
 
 # =================== Function Definitions =================
 
@@ -53,13 +54,6 @@ def chooseFile():
     del tempPath
 
 # === Processing function and it's helpers ===
-# setMonoButton command
-def setMonoConversion():
-    global convertToMono
-    if convertToMono:
-        convertToMono = False
-    else:
-        convertToMono = True
 
 # Process the audio file
 def processAudio():
@@ -67,8 +61,9 @@ def processAudio():
     """Range = Start - End
     Resample = True or False (needs new sampleRate if True)
     convertToMono = True or False"""
-    rS = int(startTime.get())
-    rE = int(endTime.get())
+    global convertToMono
+    rS, rE, convertToMono = rangeFrame.getValues()
+
     rangeIsCorrect = (rS >= 0) and (rE > rS)
     if rangeIsCorrect and fileImported:
         global sampleRate
@@ -101,11 +96,7 @@ def processAudio():
         output = inputS.copy()
         userCode(inputS, output, 1, len(inputS), sampleRate, par1, par2, par3, par4)
 
-
 # === customCode functions and it's helpers ===
-def applyCustomCode(p1, p2, p3, p4):
-    """Processes the section of the audio file that was loaded"""
-
 def updateCodeBlock():
     userIn = codeBox.get("1.0", 'end-1c')
     codeFilePath = os.getcwd() + '/Assets/userCode.py'
@@ -213,14 +204,21 @@ def plotGain():
 
 
 # ========== App loop =============
-mainWindow = Tk()
+
 
 # Main Window
 mainWindow.geometry('1200x900')
 mainWindow.title('DSP Visualiser')
 mainWindow['background'] = '#680118'
 
-# GUI
+# ============================== GUI ========================
+# File Chooser
+chooseFileButton = Button(mainWindow, text='Choose File', command=chooseFile)
+chooseFileButton.place(x=20, y=10, width=135, height=30)
+# Render Range
+rangeFrame = RenderRangeFrame(mainWindow)
+rangeFrame.draw(20, 50, 150, 50)
+# Parameter frames
 p1Frame = ParameterFrame(mainWindow, 1)
 p1Frame.draw(240, 48, 40, 75)
 p2Frame = ParameterFrame(mainWindow, 2)
@@ -230,30 +228,9 @@ p3Frame.draw(360, 48, 40, 75)
 p4Frame = ParameterFrame(mainWindow, 4)
 p4Frame.draw(420, 48, 40, 75)
 
-# File Chooser
-chooseFileButton = Button(mainWindow, text='Choose File', command=chooseFile)
-chooseFileButton.place(x=20, y=10, width=135, height=30)
-
 # ================= File processing options ===============
-startTime = tkinter.StringVar(mainWindow)
-startTLabel = Label(mainWindow, text='Start', justify='center')
-startTLabel.place(x=20, y=50, width=35, height=25)
-startTBox = Entry(textvariable=startTime)
-startTBox.place(x=60, y=50, width=45, height=25)
-
-endTime = tkinter.StringVar(mainWindow)
-endTLabel = Label(mainWindow, text='end', justify='center')
-endTLabel.place(x=110, y=50, width=30, height=25)
-endTBox = Entry(textvariable=endTime)
-endTBox.place(x=145, y=50, width=45, height=25)
-
-convertToMono = False
-monoButton = Checkbutton(command=setMonoConversion)
-monoButton.place(x=200, y=52, width=20, height=20)
-
-# Process Part
 processAudioButton = Button(mainWindow, text='Process Part', command=processAudio)
-processAudioButton.place(x=20, y=80, width=150, height=25)
+processAudioButton.place(x=20, y=110, width=150, height=25)
 
 # ===================== Code Entry ====================
 codeBox = ScrolledText()
