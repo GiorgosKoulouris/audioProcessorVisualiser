@@ -60,7 +60,6 @@ def setInterpreterPath():
     #     the program with the same interpreter he is going to provide while using it
     global interpreterPath
     interpreterPath = askdirectory() + '/python' + str(sys.version_info.major) + '.' + str(sys.version_info.minor)
-    print(interpreterPath)
 
 def setSourceTopLvlDirectory():
     """Display pop-up window to let user set the source code directory"""
@@ -141,24 +140,31 @@ def processAudio():
         if p4Frame.choice != 0:
             par4 = p4Frame.getValue()
 
-        # ====== This will be re-enabled when output is read and loaded correctly
-        # global output
-        # del output
-        gc.collect()
-
-        # Save input ndarray as a binary and run asset scripts
+        # Save input ndarray as a binary
         scriptPath = srcTopLvlPath + '/Assets/applyUserCode.py'
         arrayFilePath = srcTopLvlPath + '/Assets/dspVisInputArray.txt'
         bp.pack_ndarray_to_file(inputS, arrayFilePath)
+
+        # Run asset scripts
         args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples), str(sampleRate), str(par1), str(par2), str(par3), str(par4)]
-        # FIXME: Currently not returning the array
-        output = subprocess.run(args, capture_output=True)
-        print(output)
+        processCheck = subprocess.run(args, capture_output=True, text=True)
+
+        # Check for errors and receive processed signal
+        if processCheck.returncode == 0:
+            global output
+            del output
+            output = bp.unpack_ndarray_file(arrayFilePath)
+        else:
+            # TODO: This should instead initialize a popup window displaying the error message
+            print(processCheck.stderr)
+
+        # Get rid of any previously created/processed arrays
+        gc.collect()
 
 # === customCode functions and it's helpers ===
 def updateCodeBlock():
     userIn = codeBox.get("1.0", 'end-1c')
-    codeFilePath = os.getcwd() + '/Assets/userCode.py'
+    codeFilePath = srcTopLvlPath + '/Assets/userCode.py'
     with open(codeFilePath, 'w') as userPy:
         userPy.write(userIn)
         userPy.close()
@@ -201,11 +207,8 @@ def createAssetScripts():
         applyUserPY.write('par3 = sys.argv[7]\n')
         applyUserPY.write('par4 = sys.argv[8]\n\n')
 
-        applyUserPY.write('def getOut():\n')
-        applyUserPY.write('    result = userCode(inS, numC, numS, sRate, par1, par2, par3, par4)\n')
-        applyUserPY.write('    return result\n\n')
-
-        applyUserPY.write('getOut()\n')
+        applyUserPY.write('output = userCode(inS, numC, numS, sRate, par1, par2, par3, par4)\n\n')
+        applyUserPY.write('bp.pack_ndarray_to_file(output, sys.argv[1])\n')
 
         applyUserPY.close()
 

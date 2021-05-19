@@ -13,8 +13,6 @@ par2 = sys.argv[6]
 par3 = sys.argv[7]
 par4 = sys.argv[8]
 
-def getOut():
-    result = userCode(inS, numC, numS, sRate, par1, par2, par3, par4)
-    return result
+output = userCode(inS, numC, numS, sRate, par1, par2, par3, par4)
 
-getOut()
+bp.pack_ndarray_to_file(output, sys.argv[1])
