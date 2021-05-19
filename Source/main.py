@@ -50,6 +50,20 @@ includeWavesInGainPlot = False
 mainWindow = Tk()
 
 # =================== Function Definitions =================
+# Interpreter and src path related
+def initPaths():
+    popUp = Toplevel(mainWindow)
+    popUp.geometry('200x200')
+    popUp.title('Configure Setup')
+
+    interPathButton = Button(popUp, text='Set interpreter path', command=lambda: print(sys.executable))
+    srcPathButton = Button(popUp, text='Set source path', command=lambda: print(os.getcwd()))
+
+    interPathButton.pack()
+    srcPathButton.pack()
+
+    popUp.wait_window()
+
 # Choose an audio file
 def chooseFile():
     """Display pop-up window to let user select an audio file"""
@@ -269,6 +283,8 @@ def plotGain():
 mainWindow.geometry('1200x900')
 mainWindow.title('DSP Visualiser')
 mainWindow['background'] = '#680118'
+initPaths()
+
 
 # ============================== GUI ========================
 # File Chooser
