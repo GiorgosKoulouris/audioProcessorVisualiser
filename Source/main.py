@@ -106,10 +106,11 @@ def processAudio():
         del output
 
         scriptPath = os.getcwd() + '/Assets/applyUserCode.py'
-        inEn = pickle.dumps(inputS)
+        inEn = str(pickle.dumps(inputS))
         output = inputS.copy()
-        outEn = pickle.dumps(output)
-        subprocess.call(['python', scriptPath, inEn, outEn, numChannels, numSamples, sampleRate, par1, par2, par3, par4])
+        outEn = str(pickle.dumps(output))
+        args = [scriptPath, inEn, outEn, str(numChannels), str(numSamples), str(sampleRate), str(par1), str(par2), str(par3), str(par4)]
+        subprocess.call(args)
 
 # === customCode functions and it's helpers ===
 def updateCodeBlock():
@@ -120,8 +121,11 @@ def updateCodeBlock():
         userPy.close()
 
 def createCustomCodeFile():
+    # Create/Overwrite userCode.py
     codeFilePath = os.getcwd() + '/Assets/userCode.py'
     with open(codeFilePath, 'w') as userPy:
+        userPy.write('import numpy as np\n')
+
         userPy.write('def userCode(input, output, numChannels, numSamples, sampleRate, p1, p2, p3, p4):\n')
         userPy.write('    # You get an ndarray with a shape of {numChannels, numSamples} as an input\n\n')
 
@@ -135,6 +139,33 @@ def createCustomCodeFile():
         userPy.write('    return output\n')
 
         userPy.close()
+
+        # Create/Overwrite applyUserCode.py
+        codeFilePath = os.getcwd() + '/Assets/applyUserCode.py'
+        with open(codeFilePath, 'w') as applyUserPY:
+            applyUserPY.write('#!/Users/cliff/plugin-development/Python/pythonAudioHelper/venv/bin/python\n\n')
+            applyUserPY.write('import pickle\n')
+            applyUserPY.write('import numpy as np\n')
+            applyUserPY.write('import sys\n')
+            applyUserPY.write('from userCode import userCode\n\n')
+
+            applyUserPY.write('intS = pickle.loads(sys.argv[1])\n')
+            applyUserPY.write('outS = pickle.loads(sys.argv[2])\n')
+            applyUserPY.write('numC = int(sys.argv[3])\n')
+            applyUserPY.write('numS = int(sys.argv[4])\n')
+            applyUserPY.write('sRate = int(sys.argv[5])\n')
+            applyUserPY.write('par1 = sys.argv[6]\n')
+            applyUserPY.write('par2 = sys.argv[7]\n')
+            applyUserPY.write('par3 = sys.argv[8]\n')
+            applyUserPY.write('par4 = sys.argv[9]\n\n')
+
+            applyUserPY.write('def getOut():\n')
+            applyUserPY.write('    result = userCode(intS, outS, numC, numS, sRate, par1, par2, par3, par4)\n')
+            applyUserPY.write('    return result\n\n')
+
+            applyUserPY.write('getOut()\n')
+
+            applyUserPY.close()
 
 def updateCodeBox():
     codeFilePath = os.getcwd() + '/Assets/userCode.py'
@@ -273,4 +304,3 @@ updateCodeBox()
 mainWindow.mainloop()
 # Recreate the file so upon next import there are no errors if user misspells sth
 createCustomCodeFile()
-

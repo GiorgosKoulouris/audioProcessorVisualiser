@@ -1,3 +1,4 @@
+import numpy as np
 def userCode(input, output, numChannels, numSamples, sampleRate, p1, p2, p3, p4):
     # You get an ndarray with a shape of {numChannels, numSamples} as an input
 
