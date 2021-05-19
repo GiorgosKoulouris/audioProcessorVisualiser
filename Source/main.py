@@ -20,8 +20,9 @@ from tkinter.scrolledtext import ScrolledText
 import gc, os
 from parameterFrame import ParameterFrame
 from renderRangeFrame import RenderRangeFrame
+import bloscpack as bp
 import subprocess
-import pickle
+
 
 # ================ Global Variables =====================
 # Path
@@ -76,8 +77,8 @@ def processAudio():
         global numSamples
 
         del inputS
-        gc.collect()
 
+        # ============ Calculating input and variables ==============
         durationInSecs = rE - rS
         inputS, sampleRate = lr.load(importPath, sr=None, offset=rS, mono=convertToMono, duration=durationInSecs)
 
@@ -88,6 +89,7 @@ def processAudio():
             numChannels = 2
             numSamples = len(inputS[0])
 
+        # User parameters
         par1 = par2 = par3 = par4 = 0
         global p1Frame
         global p2Frame
@@ -102,15 +104,17 @@ def processAudio():
         if p4Frame.choice != 0:
             par4 = p4Frame.getValue()
 
-        global output
-        del output
+        # ====== This will be re-enabled when output is read and loaded correctly
+        # global output
+        # del output
+        gc.collect()
 
+        # Save input ndarray as a binary and run asset scripts
         scriptPath = os.getcwd() + '/Assets/applyUserCode.py'
-        inEn = str(pickle.dumps(inputS))
-        output = inputS.copy()
-        outEn = str(pickle.dumps(output))
-        args = [scriptPath, inEn, outEn, str(numChannels), str(numSamples), str(sampleRate), str(par1), str(par2), str(par3), str(par4)]
-        subprocess.call(args)
+        arrayFilePath = os.getcwd() + '/Assets/dspVisInputArray.txt'
+        bp.pack_ndarray_to_file(inputS, arrayFilePath)
+        args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples), str(sampleRate), str(par1), str(par2), str(par3), str(par4)]
+        subprocess.run(args)
 
 # === customCode functions and it's helpers ===
 def updateCodeBlock():
@@ -120,13 +124,14 @@ def updateCodeBlock():
         userPy.write(userIn)
         userPy.close()
 
-def createCustomCodeFile():
+# Create or overwrite asset scripts to avoid any errors
+def createAssetScripts():
     # Create/Overwrite userCode.py
     codeFilePath = os.getcwd() + '/Assets/userCode.py'
     with open(codeFilePath, 'w') as userPy:
-        userPy.write('import numpy as np\n')
+        userPy.write('import numpy as np\n\n')
 
-        userPy.write('def userCode(input, output, numChannels, numSamples, sampleRate, p1, p2, p3, p4):\n')
+        userPy.write('def userCode(input, numChannels, numSamples, sampleRate, p1, p2, p3, p4):\n')
         userPy.write('    # You get an ndarray with a shape of {numChannels, numSamples} as an input\n\n')
 
         userPy.write('    # p1, p2, p3, p4 are the parameters set by the user.\n')
@@ -140,32 +145,31 @@ def createCustomCodeFile():
 
         userPy.close()
 
-        # Create/Overwrite applyUserCode.py
-        codeFilePath = os.getcwd() + '/Assets/applyUserCode.py'
-        with open(codeFilePath, 'w') as applyUserPY:
-            applyUserPY.write('#!/Users/cliff/plugin-development/Python/pythonAudioHelper/venv/bin/python\n\n')
-            applyUserPY.write('import pickle\n')
-            applyUserPY.write('import numpy as np\n')
-            applyUserPY.write('import sys\n')
-            applyUserPY.write('from userCode import userCode\n\n')
+    # Create/Overwrite applyUserCode.py
+    codeFilePath = os.getcwd() + '/Assets/applyUserCode.py'
+    with open(codeFilePath, 'w') as applyUserPY:
+        applyUserPY.write('#!/Users/cliff/plugin-development/Python/pythonAudioHelper/venv/bin/python\n\n')
+        applyUserPY.write('import bloscpack as bp\n')
+        applyUserPY.write('import numpy as np\n')
+        applyUserPY.write('import sys\n')
+        applyUserPY.write('from userCode import userCode\n\n')
 
-            applyUserPY.write('intS = pickle.loads(sys.argv[1])\n')
-            applyUserPY.write('outS = pickle.loads(sys.argv[2])\n')
-            applyUserPY.write('numC = int(sys.argv[3])\n')
-            applyUserPY.write('numS = int(sys.argv[4])\n')
-            applyUserPY.write('sRate = int(sys.argv[5])\n')
-            applyUserPY.write('par1 = sys.argv[6]\n')
-            applyUserPY.write('par2 = sys.argv[7]\n')
-            applyUserPY.write('par3 = sys.argv[8]\n')
-            applyUserPY.write('par4 = sys.argv[9]\n\n')
+        applyUserPY.write('inS = bp.unpack_ndarray_file(sys.argv[1])\n')
+        applyUserPY.write('numC = int(sys.argv[2])\n')
+        applyUserPY.write('numS = int(sys.argv[3])\n')
+        applyUserPY.write('sRate = int(sys.argv[4])\n')
+        applyUserPY.write('par1 = sys.argv[5]\n')
+        applyUserPY.write('par2 = sys.argv[6]\n')
+        applyUserPY.write('par3 = sys.argv[7]\n')
+        applyUserPY.write('par4 = sys.argv[8]\n\n')
 
-            applyUserPY.write('def getOut():\n')
-            applyUserPY.write('    result = userCode(intS, outS, numC, numS, sRate, par1, par2, par3, par4)\n')
-            applyUserPY.write('    return result\n\n')
+        applyUserPY.write('def getOut():\n')
+        applyUserPY.write('    result = userCode(inS, numC, numS, sRate, par1, par2, par3, par4)\n')
+        applyUserPY.write('    return result\n\n')
 
-            applyUserPY.write('getOut()\n')
+        applyUserPY.write('getOut()\n')
 
-            applyUserPY.close()
+        applyUserPY.close()
 
 def updateCodeBox():
     codeFilePath = os.getcwd() + '/Assets/userCode.py'
@@ -296,11 +300,11 @@ plotGainButton = Button(mainWindow, text='Plot gain over time', command=plotGain
 plotGainButton.place(x=120, y=150, width=200, height=35)
 
 # Create customCodeFile
-createCustomCodeFile()
+createAssetScripts()
 updateCodeBox()
 
 # ===============================================
 # start App
 mainWindow.mainloop()
 # Recreate the file so upon next import there are no errors if user misspells sth
-createCustomCodeFile()
+createAssetScripts()
