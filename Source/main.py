@@ -17,7 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tkinter import Tk, Toplevel
 from tkinter.ttk import Button, Checkbutton
-from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import askopenfilename, askdirectory
 from tkinter.scrolledtext import ScrolledText
 import gc, os
 from parameterFrame import ParameterFrame
@@ -51,13 +51,30 @@ mainWindow = Tk()
 
 # =================== Function Definitions =================
 # Interpreter and src path related
+def setInterpreterPath():
+    """Display pop-up window to let user set the directory where the used python interpreter is"""
+    """We ask for the bin directory instead of the python executable. This happens because in most venvs python
+    executables are a symlink to the a preinstalled python env. Having that as our interpreter would cause some
+    library missing errors whe it comes to executing the asset scripts"""
+    # TODO: Find a way to get the actual file, not the symlink. This method involves guessing that user initializes
+    #     the program with the same interpreter he is going to provide while using it
+    global interpreterPath
+    interpreterPath = askdirectory() + '/python' + str(sys.version_info.major) + '.' + str(sys.version_info.minor)
+    print(interpreterPath)
+
+def setSourceTopLvlDirectory():
+    """Display pop-up window to let user set the source code directory"""
+    global srcTopLvlPath
+    srcTopLvlPath = askdirectory()
+
 def initPaths():
+    """Initializes a wait_window that allows user to set the paths"""
     popUp = Toplevel(mainWindow)
     popUp.geometry('200x200')
     popUp.title('Configure Setup')
 
-    interPathButton = Button(popUp, text='Set interpreter path', command=lambda: print(sys.executable))
-    srcPathButton = Button(popUp, text='Set source path', command=lambda: print(os.getcwd()))
+    interPathButton = Button(popUp, text='Set interpreter path', command=setInterpreterPath)
+    srcPathButton = Button(popUp, text='Set source path', command=setSourceTopLvlDirectory)
 
     interPathButton.pack()
     srcPathButton.pack()
