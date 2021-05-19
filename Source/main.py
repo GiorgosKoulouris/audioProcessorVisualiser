@@ -10,10 +10,12 @@ Intended Usage (with implemented functionality):
 
 ===============================================================================
 """
+import sys
+
 import librosa as lr
 import numpy as np
 import matplotlib.pyplot as plt
-from tkinter import Tk
+from tkinter import Tk, Toplevel
 from tkinter.ttk import Button, Checkbutton
 from tkinter.filedialog import askopenfilename
 from tkinter.scrolledtext import ScrolledText
@@ -25,7 +27,11 @@ import subprocess
 
 
 # ================ Global Variables =====================
-# Path
+# Interpreter and script related
+interpreterPath = sys.executable
+srcTopLvlPath = os.getcwd()
+
+# Audio file related
 fileImported = False
 importPath = "~/Desktop"
 
@@ -44,7 +50,6 @@ includeWavesInGainPlot = False
 mainWindow = Tk()
 
 # =================== Function Definitions =================
-
 # Choose an audio file
 def chooseFile():
     """Display pop-up window to let user select an audio file"""
@@ -64,6 +69,7 @@ def processAudio():
     """Range = Start - End
     Resample = True or False (needs new sampleRate if True)
     convertToMono = True or False"""
+    # TODO: Add resampling options
     global convertToMono
     rS, rE, convertToMono = rangeFrame.getValues()
 
@@ -172,7 +178,7 @@ def createAssetScripts():
         applyUserPY.close()
 
 def updateCodeBox():
-    codeFilePath = os.getcwd() + '/Assets/userCode.py'
+    codeFilePath = srcTopLvlPath + '/Assets/userCode.py'
     with open(codeFilePath, 'r') as userPy:
         data = userPy.read()
         codeBox.insert('1.0', data)
@@ -223,7 +229,7 @@ def plotGain():
         if convertToMono:
             g = np.zeros(len(inputS))
 
-            # Quick fix to avoid division issues. Needs fixups <------
+            # FIXME: Fix true_division issue
             for sample in range(len(inputS)):
                 if inputS[sample] != 0:
                     g[sample] = output[sample] / inputS[sample]
