@@ -1,7 +1,6 @@
-#!/Users/cliff/plugin-development/Python/pythonAudioHelper/venv/bin/python
+#!/Users/cliff/plugin-development/Python/pythonAudioHelper/venv/bin/python3.7
 
 import bloscpack as bp
-import numpy as np
 import sys
 from userCode import userCode
 

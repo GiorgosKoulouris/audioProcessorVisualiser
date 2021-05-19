@@ -147,11 +147,13 @@ def processAudio():
         gc.collect()
 
         # Save input ndarray as a binary and run asset scripts
-        scriptPath = os.getcwd() + '/Assets/applyUserCode.py'
-        arrayFilePath = os.getcwd() + '/Assets/dspVisInputArray.txt'
+        scriptPath = srcTopLvlPath + '/Assets/applyUserCode.py'
+        arrayFilePath = srcTopLvlPath + '/Assets/dspVisInputArray.txt'
         bp.pack_ndarray_to_file(inputS, arrayFilePath)
         args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples), str(sampleRate), str(par1), str(par2), str(par3), str(par4)]
-        subprocess.run(args)
+        # FIXME: Currently not returning the array
+        output = subprocess.run(args, capture_output=True)
+        print(output)
 
 # === customCode functions and it's helpers ===
 def updateCodeBlock():
@@ -164,7 +166,7 @@ def updateCodeBlock():
 # Create or overwrite asset scripts to avoid any errors
 def createAssetScripts():
     # Create/Overwrite userCode.py
-    codeFilePath = os.getcwd() + '/Assets/userCode.py'
+    codeFilePath = srcTopLvlPath + '/Assets/userCode.py'
     with open(codeFilePath, 'w') as userPy:
         userPy.write('import numpy as np\n\n')
 
@@ -183,11 +185,10 @@ def createAssetScripts():
         userPy.close()
 
     # Create/Overwrite applyUserCode.py
-    codeFilePath = os.getcwd() + '/Assets/applyUserCode.py'
+    codeFilePath = srcTopLvlPath + '/Assets/applyUserCode.py'
     with open(codeFilePath, 'w') as applyUserPY:
-        applyUserPY.write('#!/Users/cliff/plugin-development/Python/pythonAudioHelper/venv/bin/python\n\n')
+        applyUserPY.write('#!' + interpreterPath + '\n\n')
         applyUserPY.write('import bloscpack as bp\n')
-        applyUserPY.write('import numpy as np\n')
         applyUserPY.write('import sys\n')
         applyUserPY.write('from userCode import userCode\n\n')
 
