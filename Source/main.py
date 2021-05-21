@@ -2,10 +2,11 @@
 ================================== USAGE ===============================
 
 Intended Usage (with implemented functionality):
-    1. Click "Choose File" to select an audio file to use
-    2. Define start and end times (in secs) and click "Process Part" to process the selected section
-    3. Write your own code for the signal processing and press updateButton
-    2. Click the Plot Gain button to show a plot of Gain over Time
+    1. Choose your python interpeter path and source file path
+    2. Click "Choose File" to select an audio file to use
+    3. Define start and end times (in secs) and click "Process Part" to process the selected section
+    4. Write your own code for the signal processing and press updateButton
+    5. Click the Plot Gain button to show a plot of Gain over Time
         --> checking the checkbutton on the left also plots the original and processed signal
 
 ===============================================================================
@@ -15,6 +16,7 @@ import os
 import subprocess
 import sys
 from tkinter import Tk, Toplevel
+from tkinter.constants import NO
 from tkinter.filedialog import askdirectory, askopenfilename
 from tkinter.scrolledtext import ScrolledText
 from tkinter.ttk import Button, Checkbutton
@@ -154,7 +156,9 @@ class DspVisualiser:
         if tempPath.endswith(".wav"):
             self.importPath = tempPath
             self.fileImported = True
-        del tempPath
+            del tempPath
+        else:
+            raise Exception('Not a valid audio file')
 
     # === Processing function and it's helpers ===
 
@@ -331,39 +335,42 @@ class DspVisualiser:
                     del fig, ax, x, g
                     gc.collect()
 
-    def initGUI(self):
+    def initGUI(self, window=None):
+        if window == None:
+            window = self.mainWindow
+
         # Main Window
-        self.mainWindow.geometry('1200x900')
-        self.mainWindow.title('DSP Visualiser')
-        self.mainWindow['background'] = '#680118'
+        window.geometry('1200x900')
+        window.title('DSP Visualiser')
+        window['background'] = '#680118'
 
         # File Chooser
         self.chooseFileButton = Button(
-            self.mainWindow, text='Choose File', command=self.chooseFile)
+            window, text='Choose File', command=self.chooseFile)
         self.chooseFileButton.place(x=20, y=10, width=135, height=30)
         # Render Range
-        self.rangeFrame = RenderRangeFrame(self.mainWindow)
+        self.rangeFrame = RenderRangeFrame(window)
         self.rangeFrame.draw(20, 50, 150, 50)
         # Parameter frames
-        self.p1Frame = ParameterFrame(self.mainWindow, 1)
+        self.p1Frame = ParameterFrame(window, 1)
         self.p1Frame.draw(240, 48, 40, 75)
-        self.p2Frame = ParameterFrame(self.mainWindow, 2)
+        self.p2Frame = ParameterFrame(window, 2)
         self.p2Frame.draw(300, 48, 40, 75)
-        self.p3Frame = ParameterFrame(self.mainWindow, 3)
+        self.p3Frame = ParameterFrame(window, 3)
         self.p3Frame.draw(360, 48, 40, 75)
-        self.p4Frame = ParameterFrame(self.mainWindow, 4)
+        self.p4Frame = ParameterFrame(window, 4)
         self.p4Frame.draw(420, 48, 40, 75)
 
         # ================= File processing options ===============
         self.processAudioButton = Button(
-            self.mainWindow, text='Process Part', command=self.processAudio)
+            window, text='Process Part', command=self.processAudio)
         self.processAudioButton.place(x=20, y=110, width=150, height=25)
 
         # ===================== Code Entry ====================
         self.codeBox = ScrolledText()
         self.codeBox.place(x=500, y=100, width=670, height=400)
         self.updateCodeButton = Button(
-            self.mainWindow, text='Update code', command=self.updateCodeBlock)
+            window, text='Update code', command=self.updateCodeBlock)
         self.updateCodeButton.place(x=675, y=520, width=220, height=25)
 
         # ===================== Plotting options ====================
@@ -373,7 +380,7 @@ class DspVisualiser:
         self.wavesInGainButton.place(x=50, y=150, width=20, height=20)
 
         self.plotGainButton = Button(
-            self.mainWindow, text='Plot gain over time', command=self.plotGain)
+            window, text='Plot gain over time', command=self.plotGain)
         self.plotGainButton.place(x=120, y=150, width=200, height=35)
 
     def initiate(self):
