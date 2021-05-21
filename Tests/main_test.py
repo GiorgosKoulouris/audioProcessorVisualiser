@@ -6,6 +6,7 @@ from unittest import mock
 
 import numpy as np
 from Source.main import DspVisualiser
+from Source.exceptions import *
 
 
 class Test_Main(unittest.TestCase):
@@ -15,6 +16,27 @@ class Test_Main(unittest.TestCase):
         # create an object and run its __init__ statements so they become available for the tests
 
         self.d = DspVisualiser()
+        """
+        # Interpreter and script related
+        self.d.srcTopLvlPath = os.getcwd() + '/Source'
+        self.d.interpreterPath = sys.executable
+
+        # Audio file related
+        self.d.fileImported = False
+        self.d.importPath = "~/Desktop"
+
+        # File and Signal related
+        self.d.sampleRate = 44100
+        self.d.convertToMono = False
+        self.d.inputS = np.zeros(self.d.sampleRate)
+        self.d.durationInSecs = 1
+        self.d.numChannels = 2
+        self.d.numSamples = self.d.sampleRate
+        self.d.output = self.d.inputS.copy()
+
+        # Plotting options
+        self.d.includeWavesInGainPlot = False        
+        """
 
         # Interpreter and script related
         self.srcTopLvlPath = os.getcwd() + '/Source'
