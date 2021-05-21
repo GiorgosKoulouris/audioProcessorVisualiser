@@ -1,3 +1,4 @@
 librosa==0.8.0
 matplotlib==3.4.2
 bloscpack==0.16.0
+pytest==6.2.4
