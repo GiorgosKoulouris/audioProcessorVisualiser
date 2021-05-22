@@ -15,13 +15,12 @@ import gc
 import os
 import subprocess
 import sys
-from tkinter import Tk, Toplevel
-from tkinter.constants import NO
+from tkinter import Tk
 from tkinter.filedialog import askdirectory, askopenfilename
 from tkinter.scrolledtext import ScrolledText
 from tkinter.ttk import Button, Checkbutton
 
-import bloscpack as bp
+from bloscpack import pack_ndarray_to_file, unpack_ndarray_from_file
 import librosa as lr
 import matplotlib.pyplot as plt
 import numpy as np
@@ -75,6 +74,7 @@ class DspVisualiser:
         popUp.geometry('200x200')
         popUp.title('Configure Setup')
 
+        # FIXME: Opening OS file chooser but canceling without choosing causes path abnormalities
         interPathButton = Button(popUp, text='Set interpreter path', command=self.setInterpreterPath)
         srcPathButton = Button(popUp, text='Set source path', command=self.setSourceTopLvlDirectory)
 
@@ -130,11 +130,11 @@ class DspVisualiser:
         codeFilePath = self.srcTopLvlPath + '/Assets/applyUserCode.py'
         with open(codeFilePath, 'w') as applyUserPY:
             applyUserPY.write('#!' + self.interpreterPath + '\n\n')
-            applyUserPY.write('import bloscpack as bp\n')
+            applyUserPY.write('from bloscpack import unpack_ndarray_from_file, pack_ndarray_to_file\n')
             applyUserPY.write('import sys\n')
             applyUserPY.write('from userCode import userCode\n\n')
 
-            applyUserPY.write('inS = bp.unpack_ndarray_file(sys.argv[1])\n')
+            applyUserPY.write('inS = unpack_ndarray_from_file(sys.argv[1])\n')
             applyUserPY.write('numC = int(sys.argv[2])\n')
             applyUserPY.write('numS = int(sys.argv[3])\n')
             applyUserPY.write('sRate = int(sys.argv[4])\n')
@@ -145,7 +145,7 @@ class DspVisualiser:
 
             applyUserPY.write(
                 'output = userCode(inS, numC, numS, sRate, par1, par2, par3, par4)\n\n')
-            applyUserPY.write('bp.pack_ndarray_to_file(output, sys.argv[1])\n')
+            applyUserPY.write('pack_ndarray_to_file(output, sys.argv[1])\n')
 
             applyUserPY.close()
 
@@ -211,8 +211,9 @@ class DspVisualiser:
 
             # Save input ndarray as a binary
             scriptPath = self.srcTopLvlPath + '/Assets/applyUserCode.py'
+            
             arrayFilePath = self.srcTopLvlPath + '/Assets/dspVisInputArray.txt'
-            bp.pack_ndarray_to_file(self.inputS, arrayFilePath)
+            pack_ndarray_to_file(self.inputS, arrayFilePath)
 
             # Run asset scripts
             args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples), str(
@@ -222,7 +223,7 @@ class DspVisualiser:
             # Check for errors and receive processed signal
             if processCheck.returncode == 0:
                 del self.output
-                self.output = bp.unpack_ndarray_file(arrayFilePath)
+                self.output = unpack_ndarray_from_file(arrayFilePath)
             else:
                 # TODO: This should instead initialize a popup window displaying the error message
                 print(processCheck.stderr)
