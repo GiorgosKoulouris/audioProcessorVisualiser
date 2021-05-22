@@ -6,14 +6,16 @@ from unittest import mock
 
 import numpy as np
 from Source.main import DspVisualiser
-from Source.exceptions import *
 
 
 class Test_Main(unittest.TestCase):
 
     # setUp and tearDown
     def setUp(self):
-        # create an object and run its __init__ statements so they become available for the tests
+        """
+        Create an object and run its __init__ statements so
+        they become available for the tests
+        """
 
         self.d = DspVisualiser()
         """
@@ -35,7 +37,7 @@ class Test_Main(unittest.TestCase):
         self.d.output = self.d.inputS.copy()
 
         # Plotting options
-        self.d.includeWavesInGainPlot = False        
+        self.d.includeWavesInGainPlot = False
         """
 
         # Interpreter and script related
@@ -74,7 +76,7 @@ class Test_Main(unittest.TestCase):
     def test_initGUI_defaultParentOK(self):
         self.d.mainWindow = Tk()
         self.d.initGUI()
-        self.assertEqual(self.d.p2Frame.parent, self.d.mainWindow, 
+        self.assertEqual(self.d.p2Frame.parent, self.d.mainWindow,
                          'mainWindow as default parent of GUI not passed correctly')
 
     # =============== chooseFile method =================
@@ -82,16 +84,13 @@ class Test_Main(unittest.TestCase):
     def test_chooseFile_capturedValidPath(self, mock_audioFile):
         self.d.chooseFile()
         expected = '/my/Random/audioFile.wav'
-        self.assertEqual(self.d.importPath, expected, 'Did not update importPath')
+        self.assertEqual(self.d.importPath, expected,
+                         'Did not update importPath')
 
-    @mock.patch("Source.main.askopenfilename", return_value='/my/Random/notAudioFile.sth')
+    @mock.patch("Source.main.askopenfilename", return_value='invalid.sth')
     def test_chooseFile_raise_OnInvalidPath(self, mock_audioFile):
-        with self.assertRaises(Exception, msg='Not raised when file was not an audio file'):
+        with self.assertRaises(Exception, msg='Not raised when file wasnt an audio file'):
             self.d.chooseFile()
-
-
-
-
 
 
 if __name__ == '__main__':

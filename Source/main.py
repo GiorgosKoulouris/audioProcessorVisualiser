@@ -26,13 +26,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 sys.path.append('./')
-from Source.renderRangeFrame import RenderRangeFrame
+from Source.exceptions import ScriptReturnCodeException, UserInputExeption, FilePathException
 from Source.parameterFrame import ParameterFrame
-from Source.exceptions import *
+from Source.renderRangeFrame import RenderRangeFrame
+
+
 
 
 class DspVisualiser:
-    def __init__(self) -> None:  
+    def __init__(self) -> None:
         # Interpreter and script related
         self.srcTopLvlPath = os.getcwd() + '/Source'
         self.interpreterPath = sys.executable
@@ -54,15 +56,20 @@ class DspVisualiser:
         self.includeWavesInGainPlot = False
 
     # Interpreter and src path related
+    # Use to ensure that you dont end up getting symlinks or wrong environments
     def setInterpreterPath(self):
-        """Display pop-up window to let user set the directory where the used python interpreter is"""
-        """We ask for the bin directory instead of the python executable. This happens because in most venvs python
-        executables are a symlink to the a preinstalled python env. Having that as our interpreter would cause some
-        library missing errors whe it comes to executing the asset scripts"""
-        # TODO: Find a way to get the actual file, not the symlink. This method involves guessing that user initializes
-        #     the program with the same interpreter he is going to provide while using it
-        self.interpreterPath = askdirectory() + '/python' + str(sys.version_info.major) + \
-            '.' + str(sys.version_info.minor)
+        """
+        Display pop-up window to let user set the directory where
+        the used python interpreter is
+        """
+        # TODO: Find a way to get the actual file, not the symlink.
+        #   This method involves guessing that user initializes the program
+        #   with the same interpreter he is going to provide while using it
+        major = str(sys.version_info.major)
+        minor = str(sys.version_info.minor)
+        pyVersionSuffix = '/python' + major + '.' + minor
+        self.interpreterPath = askdirectory() + pyVersionSuffix
+        print(self.interpreterPath)
 
     def setSourceTopLvlDirectory(self):
         """Display pop-up window to let user set the source code directory"""
@@ -74,9 +81,11 @@ class DspVisualiser:
         popUp.geometry('200x200')
         popUp.title('Configure Setup')
 
-        # FIXME: Opening OS file chooser but canceling without choosing causes path abnormalities
-        interPathButton = Button(popUp, text='Set interpreter path', command=self.setInterpreterPath)
-        srcPathButton = Button(popUp, text='Set source path', command=self.setSourceTopLvlDirectory)
+        # FIXME: Canceling on fileChooser causes path abnormalities
+        interPathButton = Button(
+            popUp, text='Set interpreter path', command=self.setInterpreterPath)
+        srcPathButton = Button(popUp, text='Set source path',
+                               command=self.setSourceTopLvlDirectory)
 
         interPathButton.pack()
         srcPathButton.pack()
@@ -130,7 +139,8 @@ class DspVisualiser:
         codeFilePath = self.srcTopLvlPath + '/Assets/applyUserCode.py'
         with open(codeFilePath, 'w') as applyUserPY:
             applyUserPY.write('#!' + self.interpreterPath + '\n\n')
-            applyUserPY.write('from bloscpack import unpack_ndarray_from_file, pack_ndarray_to_file\n')
+            applyUserPY.write(
+                'from bloscpack import unpack_ndarray_from_file, pack_ndarray_to_file\n')
             applyUserPY.write('import sys\n')
             applyUserPY.write('from userCode import userCode\n\n')
 
@@ -176,21 +186,22 @@ class DspVisualiser:
         # Initialiase errorMsg
         errorMsg = ""
         # TODO: Add resampling options
-        if path == None:
+        if path is None:
             path = self.importPath
             predifinedInput = True
         else:
             predifinedInput = False
 
         # FIXME: These values should be evaluated seperately
-        if rS == None and rE == None and mono == None:
+        if rS is None and rE is None and mono is None:
             rS, rE, self.convertToMono = self.rangeFrame.getValues()
 
         rangeIsCorrect = (rS >= 0) and (rE > rS)
         # Check if range is valid
         if not rangeIsCorrect:
             try:
-                raise UserInputExeption("Invalid time range", f'    {rS} > {rE}')
+                raise UserInputExeption(
+                    "Invalid time range", f'    {rS} > {rE}')
             except UserInputExeption as e:
                 errorMsg = e.message
                 print(e)
@@ -205,17 +216,19 @@ class DspVisualiser:
 
         if not predifinedInput and not path.endswith(".wav"):
             try:
-                raise UserInputExeption("No valid audio extension", '  Should be a .wav file')
+                raise UserInputExeption(
+                    "No valid audio extension", '  Should be a .wav file')
             except UserInputExeption as e:
                 errorMsg = e.message
                 print(e)
                 print(e.error)
+    # TODO: Print errorMsg on a pop-up window
 
         # ============ Calculating input and variables ==============
         self.durationInSecs = rE - rS
         self.inputS, self.sampleRate = lr.load(
             self.importPath, sr=None, offset=rS, mono=self.convertToMono, duration=self.durationInSecs)
-        
+
         if self.convertToMono:
             numChannels = 1
             numSamples = len(self.inputS)
@@ -231,11 +244,11 @@ class DspVisualiser:
         if self.p3Frame.choice != 0:
             par3 = self.p3Frame.getValue()
         if self.p4Frame.choice != 0:
-            par4 = self.p4Frame.getValue()           
-            
+            par4 = self.p4Frame.getValue()
+
         # Save input ndarray as a binary
         scriptPath = self.srcTopLvlPath + '/Assets/applyUserCode.py'
-        
+
         arrayFilePath = self.srcTopLvlPath + '/Assets/dspVisInputArray.txt'
         pack_ndarray_to_file(self.inputS, arrayFilePath)
         # Run asset scripts
@@ -246,7 +259,8 @@ class DspVisualiser:
 
         if processCheck.returncode != 0:
             try:
-                raise ScriptReturnCodeException('Running the audio processing script failed', processCheck.stderr)
+                raise ScriptReturnCodeException(
+                    'Running the audio processing script failed', processCheck.stderr)
             except ScriptReturnCodeException as e:
                 print(e)
                 print(e.error)
@@ -260,9 +274,9 @@ class DspVisualiser:
     # Plot single waveform
 
     def plotInWaveform(self, inS=None, isMono=None):
-        if isMono == None:
+        if isMono is None:
             isMono = self.convertToMono
-        if inS == None:
+        if inS is None:
             inS = self.inputS
 
         if isMono:
@@ -279,7 +293,7 @@ class DspVisualiser:
     # Plot both inputS and output
 
     def plotStackedWaveforms(self, wave1=None, wave2=None, isMono=None):
-        if wave1 == None and wave2 == None:
+        if wave1 is None and wave2 is None:
             wave1 = self.inputS
             wave2 = self.output
             label1 = 'Input'
@@ -288,7 +302,7 @@ class DspVisualiser:
             label1 = 'WaveForm 1'
             label2 = 'WaveForm 2'
 
-        if isMono == None:
+        if isMono is None:
             isMono = self.convertToMono
 
         if isMono:
@@ -317,11 +331,11 @@ class DspVisualiser:
         """If <includeWavesInGainPlot = True>, it also plots a stacked overview of the waveforms"""
 
         # Check if there are arguments passed
-        if inS == None:
+        if inS is None:
             inS = self.inputS
-        if outS == None:
+        if outS is None:
             outS = self.output
-        if isMono == None:
+        if isMono is None:
             isMono = self.convertToMono
 
         if self.fileImported:
@@ -362,7 +376,7 @@ class DspVisualiser:
                     gc.collect()
 
     def initGUI(self, window=None):
-        if window == None:
+        if window is None:
             window = self.mainWindow
 
         # Main Window
