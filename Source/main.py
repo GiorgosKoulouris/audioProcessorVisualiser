@@ -159,6 +159,9 @@ class DspVisualiser:
             self.fileImported = True
             del tempPath
         else:
+            # FIXME: Pressing cancel button should not throw an exception
+            if not self.importPath.endswith('.wav'):
+                self.fileImported = False
             raise Exception('Not a valid audio file')
 
     # === Processing function and it's helpers ===
@@ -170,66 +173,87 @@ class DspVisualiser:
         """Range = Start - End
         Resample = True or False (needs new sampleRate if True)
         convertToMono = True or False"""
+        # Initialiase errorMsg
+        errorMsg = ""
         # TODO: Add resampling options
         if path == None:
             path = self.importPath
+            predifinedInput = True
+        else:
+            predifinedInput = False
 
         # FIXME: These values should be evaluated seperately
         if rS == None and rE == None and mono == None:
             rS, rE, self.convertToMono = self.rangeFrame.getValues()
 
         rangeIsCorrect = (rS >= 0) and (rE > rS)
-        if rangeIsCorrect and self.fileImported:
+        # Check if range is valid
+        if not rangeIsCorrect:
             try:
-                del self.inputS
-            except:
-                pass
+                raise UserInputExeption("Invalid time range", f'    {rS} > {rE}')
+            except UserInputExeption as e:
+                errorMsg = e.message
+                print(e)
+                print(e.error)
+        # Check if it a valid audio file supported
+        if predifinedInput and not self.fileImported:
+            try:
+                raise UserInputExeption("No audio file selected")
+            except UserInputExeption as e:
+                errorMsg = e.message
+                print(e)
 
-            # ============ Calculating input and variables ==============
-            self.durationInSecs = rE - rS
-            self.inputS, self.sampleRate = lr.load(
-                self.importPath, sr=None, offset=rS, mono=self.convertToMono, duration=self.durationInSecs)
+        if not predifinedInput and not path.endswith(".wav"):
+            try:
+                raise UserInputExeption("No valid audio extension", '  Should be a .wav file')
+            except UserInputExeption as e:
+                errorMsg = e.message
+                print(e)
+                print(e.error)
 
-            if self.convertToMono:
-                numChannels = 1
-                numSamples = len(self.inputS)
-            else:
-                numChannels = 2
-                numSamples = len(self.inputS[0])
-
-            # User parameters
-            par1 = par2 = par3 = par4 = 0
-
-            if self.p1Frame.choice != 0:
-                par1 = self.p1Frame.getValue()
-            if self.p2Frame.choice != 0:
-                par2 = self.p2Frame.getValue()
-            if self.p3Frame.choice != 0:
-                par3 = self.p3Frame.getValue()
-            if self.p4Frame.choice != 0:
-                par4 = self.p4Frame.getValue()
-
-            # Save input ndarray as a binary
-            scriptPath = self.srcTopLvlPath + '/Assets/applyUserCode.py'
+        # ============ Calculating input and variables ==============
+        self.durationInSecs = rE - rS
+        self.inputS, self.sampleRate = lr.load(
+            self.importPath, sr=None, offset=rS, mono=self.convertToMono, duration=self.durationInSecs)
+        
+        if self.convertToMono:
+            numChannels = 1
+            numSamples = len(self.inputS)
+        else:
+            numChannels = 2
+            numSamples = len(self.inputS[0])
+        # User parameters
+        par1 = par2 = par3 = par4 = 0
+        if self.p1Frame.choice != 0:
+            par1 = self.p1Frame.getValue()
+        if self.p2Frame.choice != 0:
+            par2 = self.p2Frame.getValue()
+        if self.p3Frame.choice != 0:
+            par3 = self.p3Frame.getValue()
+        if self.p4Frame.choice != 0:
+            par4 = self.p4Frame.getValue()           
             
-            arrayFilePath = self.srcTopLvlPath + '/Assets/dspVisInputArray.txt'
-            pack_ndarray_to_file(self.inputS, arrayFilePath)
+        # Save input ndarray as a binary
+        scriptPath = self.srcTopLvlPath + '/Assets/applyUserCode.py'
+        
+        arrayFilePath = self.srcTopLvlPath + '/Assets/dspVisInputArray.txt'
+        pack_ndarray_to_file(self.inputS, arrayFilePath)
+        # Run asset scripts
+        args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples), str(
+            self.sampleRate), str(par1), str(par2), str(par3), str(par4)]
 
-            # Run asset scripts
-            args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples), str(
-                self.sampleRate), str(par1), str(par2), str(par3), str(par4)]
-            processCheck = subprocess.run(args, capture_output=True, text=True)
+        processCheck = subprocess.run(args, capture_output=True, text=True)
 
-            # Check for errors and receive processed signal
-            if processCheck.returncode == 0:
-                del self.output
-                self.output = unpack_ndarray_from_file(arrayFilePath)
-            else:
-                # TODO: This should instead initialize a popup window displaying the error message
-                print(processCheck.stderr)
-
-            # Get rid of any previously created/processed arrays
-            gc.collect()
+        if processCheck.returncode != 0:
+            try:
+                raise ScriptReturnCodeException('Running the audio processing script failed', processCheck.stderr)
+            except ScriptReturnCodeException as e:
+                print(e)
+                print(e.error)
+        del self.output
+        self.output = unpack_ndarray_from_file(arrayFilePath)
+        # Get rid of any previously created/processed arrays
+        gc.collect()
 
     # ================= Plotting functions ======================
 
