@@ -30,8 +30,15 @@ class RenderRangeFrame:
         self.convertToMonoButton.place(x=.7*w, y=.5*h, width=.15*w, height=.5*h)
 
     def getValues(self):
-        s = int((self.startTextBox.get().strip()))
-        e = int((self.endTextBox.get().strip()))
+        # Apply strip only if textboxes contain sth to avoid exceptions
+        if self.startTextBox.get() !=  "":
+            s = int((self.startTextBox.get().strip()))
+        else:
+            s = 0
+        if self.endTextBox.get() !=  "":
+            e = int((self.endTextBox.get().strip()))
+        else:
+            e = 0
         return s, e, self.mono
 
     def setMono(self):

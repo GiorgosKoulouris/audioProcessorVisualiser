@@ -41,10 +41,12 @@ class ParameterFrame:
         self.myFrame.place(x=xIn, y=yIn, width=wIn, height=hIn)
 
     def getValue(self):
-        p = self.param.get()
-        if self.choice == 1:
+        # Apply strip only if textboxes contain sth to avoid exceptions
+        if self.choice == 1 and self.param.get() != "":
+            p = self.param.get()
             return int(p.strip())
-        elif self.choice == 2:
+        elif self.choice == 2 and self.param.get() != "":
+            p = self.param.get()
             return float(p.strip())
 
     def setChoice0(self):
