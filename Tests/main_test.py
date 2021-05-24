@@ -95,13 +95,22 @@ class Test_Main(unittest.TestCase):
 
     @mock.patch('os.path.isfile', return_value=False)
     @mock.patch('Source.main.askdirectory', return_value='some/dir')
-    def test_setInterpreterPath_invalidInput(self,
+    def test_setInterpreterPath_raisedOn_invalidInput(self,
                                              mock_isFile,
                                              mock_askdirectory):
         startValue = 'random/Value'
         self.d.interpreterPath = startValue
         # Should raise
         self.assertFalse(self.d.setInterpreterPath())
+
+    @mock.patch('os.path.isfile', return_value=False)
+    @mock.patch('Source.main.askdirectory', return_value='some/dir')
+    def test_setInterpreterPath_rejected_invalidInput(self,
+                                             mock_isFile,
+                                             mock_askdirectory):
+        startValue = 'random/Value'
+        self.d.interpreterPath = startValue
+        self.d.setInterpreterPath()
         # Should not change value
         self.assertEqual(self.d.interpreterPath, startValue)
 
