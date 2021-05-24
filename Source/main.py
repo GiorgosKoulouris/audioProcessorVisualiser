@@ -4,10 +4,12 @@
 Intended Usage (with implemented functionality):
     1. Choose your python interpeter path and source file path
     2. Click "Choose File" to select an audio file to use
-    3. Define start and end times (in secs) and click "Process Part" to process the selected section
+    3. Define start and end times (in secs) and
+        click "Process Part" to process the selected section
     4. Write your own code for the signal processing and press updateButton
     5. Click the Plot Gain button to show a plot of Gain over Time
-        --> checking the checkbutton on the left also plots the original and processed signal
+        --> checking the checkbutton on the left also
+            plots the original and processed signal
 
 ===============================================================================
 """
@@ -26,11 +28,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 sys.path.append('./')
-from Source.exceptions import ScriptReturnCodeException, UserInputExeption, FilePathException
+from Source.exceptions import ScriptReturnCodeException, UserInputExeption
 from Source.parameterFrame import ParameterFrame
 from Source.renderRangeFrame import RenderRangeFrame
-
-
 
 
 class DspVisualiser:
@@ -65,11 +65,19 @@ class DspVisualiser:
         # TODO: Find a way to get the actual file, not the symlink.
         #   This method involves guessing that user initializes the program
         #   with the same interpreter he is going to provide while using it
-        major = str(sys.version_info.major)
-        minor = str(sys.version_info.minor)
-        pyVersionSuffix = '/python' + major + '.' + minor
-        self.interpreterPath = askdirectory() + pyVersionSuffix
-        print(self.interpreterPath)
+        userInput = askdirectory()
+        result = userInput + '/python'
+        if os.path.isfile(result):
+            self.interpreterPath = result
+            return True
+        else:
+            try:
+                raise UserInputExeption(
+                            "Directory does not contain a python interpreter",
+                            error=str(f'Selected Path: {userInput}'))
+            except UserInputExeption as e:
+                print(e)
+                return False
 
     def setSourceTopLvlDirectory(self):
         """Display pop-up window to let user set the source code directory"""
@@ -83,7 +91,8 @@ class DspVisualiser:
 
         # FIXME: Canceling on fileChooser causes path abnormalities
         interPathButton = Button(
-            popUp, text='Set interpreter path', command=self.setInterpreterPath)
+                                popUp, text='Set interpreter path',
+                                command=self.setInterpreterPath)
         srcPathButton = Button(popUp, text='Set source path',
                                command=self.setSourceTopLvlDirectory)
 
@@ -206,6 +215,7 @@ class DspVisualiser:
                 errorMsg = e.message
                 print(e)
                 print(e.error)
+
         # Check if it a valid audio file supported
         if predifinedInput and not self.fileImported:
             try:
@@ -217,12 +227,12 @@ class DspVisualiser:
         if not predifinedInput and not path.endswith(".wav"):
             try:
                 raise UserInputExeption(
-                    "No valid audio extension", '  Should be a .wav file')
+                    "No valid audio extension", 'Should be a .wav file')
             except UserInputExeption as e:
                 errorMsg = e.message
                 print(e)
                 print(e.error)
-    # TODO: Print errorMsg on a pop-up window
+        # TODO: Print errorMsg on a pop-up window
 
         # ============ Calculating input and variables ==============
         self.durationInSecs = rE - rS
@@ -252,15 +262,17 @@ class DspVisualiser:
         arrayFilePath = self.srcTopLvlPath + '/Assets/dspVisInputArray.txt'
         pack_ndarray_to_file(self.inputS, arrayFilePath)
         # Run asset scripts
-        args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples), str(
-            self.sampleRate), str(par1), str(par2), str(par3), str(par4)]
+        args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples),
+                str(self.sampleRate),
+                str(par1), str(par2), str(par3), str(par4)]
 
         processCheck = subprocess.run(args, capture_output=True, text=True)
 
         if processCheck.returncode != 0:
             try:
                 raise ScriptReturnCodeException(
-                    'Running the audio processing script failed', processCheck.stderr)
+                            'Running the audio processing script failed',
+                            processCheck.stderr)
             except ScriptReturnCodeException as e:
                 print(e)
                 print(e.error)
@@ -328,7 +340,8 @@ class DspVisualiser:
 
     def plotGain(self, inS=None, outS=None, isMono=None):
         """This function plots the gain reduction over time"""
-        """If <includeWavesInGainPlot = True>, it also plots a stacked overview of the waveforms"""
+        """If <includeWavesInGainPlot = True>, it also plots
+        a stacked overview of the waveforms"""
 
         # Check if there are arguments passed
         if inS is None:
@@ -416,7 +429,9 @@ class DspVisualiser:
         # ===================== Plotting options ====================
         self.includeWavesInGainPlot = False
         self.wavesInGainButton = Checkbutton(
-            variable=self.includeWavesInGainPlot, command=self.setIncludeWavesInGain)
+            variable=self.includeWavesInGainPlot,
+            command=self.setIncludeWavesInGain)
+
         self.wavesInGainButton.place(x=50, y=150, width=20, height=20)
 
         self.plotGainButton = Button(

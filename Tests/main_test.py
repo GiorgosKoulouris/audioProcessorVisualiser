@@ -76,11 +76,11 @@ class Test_Main(unittest.TestCase):
     def test_initGUI_defaultParentOK(self):
         self.d.mainWindow = Tk()
         self.d.initGUI()
-        self.assertEqual(self.d.p2Frame.parent, self.d.mainWindow,
-                         'mainWindow as default parent of GUI not passed correctly')
+        self.assertEqual(self.d.p2Frame.parent, self.d.mainWindow, 'mainWindow as default parent of GUI not passed correctly')
 
     # =============== chooseFile method =================
-    @mock.patch("Source.main.askopenfilename", return_value='/my/Random/audioFile.wav')
+    @mock.patch("Source.main.askopenfilename",
+                return_value='/my/Random/audioFile.wav')
     def test_chooseFile_capturedValidPath(self, mock_audioFile):
         self.d.chooseFile()
         expected = '/my/Random/audioFile.wav'
@@ -89,8 +89,21 @@ class Test_Main(unittest.TestCase):
 
     @mock.patch("Source.main.askopenfilename", return_value='invalid.sth')
     def test_chooseFile_raise_OnInvalidPath(self, mock_audioFile):
-        with self.assertRaises(Exception, msg='Not raised when file wasnt an audio file'):
+        with self.assertRaises(Exception,
+                               msg='Not raised when file wasnt an audio file'):
             self.d.chooseFile()
+
+    @mock.patch('os.path.isfile', return_value=False)
+    @mock.patch('Source.main.askdirectory', return_value='some/dir')
+    def test_setInterpreterPath_invalidInput(self,
+                                             mock_isFile,
+                                             mock_askdirectory):
+        startValue = 'random/Value'
+        self.d.interpreterPath = startValue
+        # Should raise
+        self.assertFalse(self.d.setInterpreterPath())
+        # Should not change value
+        self.assertEqual(self.d.interpreterPath, startValue)
 
 
 if __name__ == '__main__':
