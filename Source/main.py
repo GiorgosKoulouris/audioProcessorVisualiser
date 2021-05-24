@@ -23,7 +23,7 @@ from tkinter.scrolledtext import ScrolledText
 from tkinter.ttk import Button, Checkbutton
 
 from bloscpack import pack_ndarray_to_file, unpack_ndarray_from_file
-import librosa as lr
+from librosa.core import load
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -187,7 +187,8 @@ class DspVisualiser:
 
     # Process the audio file
 
-    def processAudio(self, path=None, resampleRate=None, rS=None, rE=None, mono=None):
+    def processAudio(self, path=None, resampleRate=None, rS=None,
+                     rE=None, mono=None):
         """Process the selected range with the given settings"""
         """Range = Start - End
         Resample = True or False (needs new sampleRate if True)
@@ -203,83 +204,82 @@ class DspVisualiser:
 
         # FIXME: These values should be evaluated seperately
         if rS is None and rE is None and mono is None:
-            rS, rE, self.convertToMono = self.rangeFrame.getValues()
+            rS, rE, mono = self.rangeFrame.getValues()
+            self.convertToMono = mono
 
         rangeIsCorrect = (rS >= 0) and (rE > rS)
-        # Check if range is valid
-        if not rangeIsCorrect:
-            try:
+        try:
+            # Check if range is valid
+            if not rangeIsCorrect:
+                raise UserInputExeption("Invalid time range",
+                                        f'Start = {rS} > End = {rE}')
+
+            # Check if it a valid audio file supported
+            if predifinedInput and not self.fileImported:
+                raise UserInputExeption("No audio file selected",
+                    'Define path using the Choose File button or by explicitly passing it as an argument')
+
+            if not predifinedInput and not path.endswith(".wav"):
                 raise UserInputExeption(
-                    "Invalid time range", f'    {rS} > {rE}')
-            except UserInputExeption as e:
-                errorMsg = e.message
-                print(e)
-                print(e.error)
+                    "No valid audio extension (.wav)",
+                    f'Given path {path}')
 
-        # Check if it a valid audio file supported
-        if predifinedInput and not self.fileImported:
-            try:
-                raise UserInputExeption("No audio file selected")
-            except UserInputExeption as e:
-                errorMsg = e.message
-                print(e)
+            # ============ Calculating input and variables ==============
+            self.durationInSecs = rE - rS
+            self.inputS, self.sampleRate = load(self.importPath,
+                                                sr=None,
+                                                offset=rS,
+                                                mono=mono,
+                                                duration=self.durationInSecs)
 
-        if not predifinedInput and not path.endswith(".wav"):
-            try:
-                raise UserInputExeption(
-                    "No valid audio extension", 'Should be a .wav file')
-            except UserInputExeption as e:
-                errorMsg = e.message
-                print(e)
-                print(e.error)
-        # TODO: Print errorMsg on a pop-up window
+            if mono:
+                numChannels = 1
+                numSamples = len(self.inputS)
+            else:
+                numChannels = 2
+                numSamples = len(self.inputS[0])
+            # User parameters
+            par1 = par2 = par3 = par4 = 0
+            if self.p1Frame.choice != 0:
+                par1 = self.p1Frame.getValue()
+            if self.p2Frame.choice != 0:
+                par2 = self.p2Frame.getValue()
+            if self.p3Frame.choice != 0:
+                par3 = self.p3Frame.getValue()
+            if self.p4Frame.choice != 0:
+                par4 = self.p4Frame.getValue()
 
-        # ============ Calculating input and variables ==============
-        self.durationInSecs = rE - rS
-        self.inputS, self.sampleRate = lr.load(
-            self.importPath, sr=None, offset=rS, mono=self.convertToMono, duration=self.durationInSecs)
+            # Save input ndarray as a binary
+            scriptPath = self.srcTopLvlPath + '/Assets/applyUserCode.py'
 
-        if self.convertToMono:
-            numChannels = 1
-            numSamples = len(self.inputS)
-        else:
-            numChannels = 2
-            numSamples = len(self.inputS[0])
-        # User parameters
-        par1 = par2 = par3 = par4 = 0
-        if self.p1Frame.choice != 0:
-            par1 = self.p1Frame.getValue()
-        if self.p2Frame.choice != 0:
-            par2 = self.p2Frame.getValue()
-        if self.p3Frame.choice != 0:
-            par3 = self.p3Frame.getValue()
-        if self.p4Frame.choice != 0:
-            par4 = self.p4Frame.getValue()
+            arrayFilePath = self.srcTopLvlPath + '/Assets/dspVisInputArray.txt'
+            pack_ndarray_to_file(self.inputS, arrayFilePath)
+            # Run asset scripts
+            args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples),
+                    str(self.sampleRate),
+                    str(par1), str(par2), str(par3), str(par4)]
 
-        # Save input ndarray as a binary
-        scriptPath = self.srcTopLvlPath + '/Assets/applyUserCode.py'
-
-        arrayFilePath = self.srcTopLvlPath + '/Assets/dspVisInputArray.txt'
-        pack_ndarray_to_file(self.inputS, arrayFilePath)
-        # Run asset scripts
-        args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples),
-                str(self.sampleRate),
-                str(par1), str(par2), str(par3), str(par4)]
-
-        processCheck = subprocess.run(args, capture_output=True, text=True)
-
-        if processCheck.returncode != 0:
-            try:
+            processCheck = subprocess.run(args, capture_output=True, text=True)
+            if processCheck.returncode != 0:
                 raise ScriptReturnCodeException(
-                            'Running the audio processing script failed',
-                            processCheck.stderr)
-            except ScriptReturnCodeException as e:
-                print(e)
-                print(e.error)
-        del self.output
-        self.output = unpack_ndarray_from_file(arrayFilePath)
-        # Get rid of any previously created/processed arrays
-        gc.collect()
+                                'Running the audio processing script failed',
+                                processCheck.stderr)
+
+            # Delete the reference to the old ndarray
+            if self.output is not None:
+                del self.output
+
+            self.output = unpack_ndarray_from_file(arrayFilePath)
+            # Get rid of any previously created/processed arrays
+            gc.collect()
+        except UserInputExeption as e:
+            errorMsg = e.message
+            print(e)
+            return False
+        except ScriptReturnCodeException as e:
+            errorMsg = e.message
+            print(e)
+            return False
 
     # ================= Plotting functions ======================
 

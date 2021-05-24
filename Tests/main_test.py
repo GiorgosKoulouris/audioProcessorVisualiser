@@ -105,14 +105,109 @@ class Test_Main(unittest.TestCase):
 
     @mock.patch('os.path.isfile', return_value=False)
     @mock.patch('Source.main.askdirectory', return_value='some/dir')
-    def test_setInterpreterPath_rejected_invalidInput(self,
-                                             mock_isFile,
-                                             mock_askdirectory):
+    def test_setInterpreterPath_rejectNewValueOn_invalidInput(
+            self, mock_isFile, mock_askdirectory):
+
+        print()
         startValue = 'random/Value'
         self.d.interpreterPath = startValue
         self.d.setInterpreterPath()
         # Should not change value
         self.assertEqual(self.d.interpreterPath, startValue)
+
+    @mock.patch('Source.main.pack_ndarray_to_file',
+                return_value=True,
+                autospec=True)
+    @mock.patch('Source.main.unpack_ndarray_from_file',
+                return_value=[324, 234, 5],
+                autospec=True)
+    def test_processAudio_raiseOn_invalidInput(self, mock_pack, mock_unpack):
+
+        argset = [['invalid.rew', None, 1, 2, True],
+                  ['valid.wav', None, 2, 1, True]]
+        print()
+
+        for i in range(len(argset)):
+            self.d.srcTopLvlPath = 'random/path'
+            with self.subTest():
+                arg = argset[i]
+                print(f'Test No {i}')
+                print(f'Arguments: {arg}')
+                self.assertFalse(self.d.processAudio(arg[0], arg[1], arg[2],
+                                                     arg[3], arg[4]))
+
+    @mock.patch('Source.main.pack_ndarray_to_file')
+    @mock.patch('Source.main.unpack_ndarray_from_file')
+    @mock.patch('Source.main.load',
+                side_effect=None,
+                return_value=([1, 2, 3, 4], 4434))
+    def test_processAudio_exceptionsHandled(self,
+                                            mock_load,
+                                            mock_unpack, mock_pack):
+
+        argset = [['invalid.rew', None, 1, 2, True],
+                  ['valid.wav', None, 2, 1, True]]
+        print()
+
+        for i in range(len(argset)):
+            self.d.srcTopLvlPath = 'invalid/path'
+            with self.subTest():
+                arg = argset[i]
+                print(f'Test No {i}')
+                print(f'Arguments: {arg}')
+                self.d.processAudio(arg[0], arg[1], arg[2], arg[3], arg[4])
+
+    @mock.patch('Source.main.pack_ndarray_to_file')
+    @mock.patch('Source.main.unpack_ndarray_from_file',
+                return_value=[1, 2, 3, 4])
+    @mock.patch('Source.main.load',
+                side_effect=None,
+                return_value=([1, 2, 3, 4], 4434))
+    def test_processAudio_rejectedProcessingAudio_invalidInput(self,
+                                                               mock_load,
+                                                               mock_unpack,
+                                                               mock_pack):
+        # FIXME: mock RangeFrame.getValues() to isolate the test
+        argset = [['invalid.rew', None, 1, 2, True],
+                  ['valid.wav', None, 2, 1, True]]
+        print()
+        for i in range(len(argset)):
+            self.d.mainWindow = Tk()
+            self.d.initGUI()
+            initialBuffer = [0, 0, 0, 0]
+            self.d.inputS = initialBuffer
+            with self.subTest():
+                arg = argset[i]
+                print(f'Test No {i}')
+                print(f'Arguments: {arg}')
+                self.d.processAudio(arg[0], arg[1], arg[2], arg[3], arg[4])
+                self.assertEqual(self.d.inputS, initialBuffer)
+
+    @mock.patch('Source.main.pack_ndarray_to_file')
+    @mock.patch('Source.main.unpack_ndarray_from_file',
+                return_value=[1, 2, 3, 4])
+    @mock.patch('Source.main.load',
+                side_effect=None,
+                return_value=([1, 2, 3, 4], 4434))
+    def test_processAudio_processedAudioOn_validInputs(self,
+                                                       mock_load,
+                                                       mock_unpack,
+                                                       mock_pack):
+        # FIXME: mock RangeFrame.getValues() to isolate the test
+        argset = [['valid.wav', None, 1, 2, True],
+                  ['valid.wav', None, 4, 12, True]]
+        print()
+        for i in range(len(argset)):
+            self.d.mainWindow = Tk()
+            self.d.initGUI()
+            initialBuffer = [0, 0, 0, 0]
+            self.d.inputS = initialBuffer
+            with self.subTest():
+                arg = argset[i]
+                print(f'Test No {i}')
+                print(f'Arguments: {arg}')
+                self.d.processAudio(arg[0], arg[1], arg[2], arg[3], arg[4])
+                self.assertEqual(self.d.inputS, [1, 2, 3, 4])
 
 
 if __name__ == '__main__':
