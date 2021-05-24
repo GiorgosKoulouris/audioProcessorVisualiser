@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 sys.path.append('./')
-from Source.exceptions import ScriptReturnCodeException, UserInputExeption
+from Source.exceptions import FilePathException, ScriptReturnCodeException, UserInputExeption
 from Source.parameterFrame import ParameterFrame
 from Source.renderRangeFrame import RenderRangeFrame
 
@@ -172,16 +172,23 @@ class DspVisualiser:
 
     def chooseFile(self):
         """Display pop-up window to let user select an audio file"""
+        # FIXME: Pressing cancel button should not throw an exception
         tempPath = askopenfilename()
-        if tempPath.endswith(".wav"):
-            self.importPath = tempPath
-            self.fileImported = True
-            del tempPath
-        else:
-            # FIXME: Pressing cancel button should not throw an exception
-            if not self.importPath.endswith('.wav'):
-                self.fileImported = False
-            raise Exception('Not a valid audio file')
+        try:
+            if tempPath.endswith(".wav"):
+                self.importPath = tempPath
+                self.fileImported = True
+                del tempPath
+                return True
+            else:
+                # If previously selected file was invalid ensure fileImported is False
+                if not self.importPath.endswith('.wav'):
+                    self.fileImported = False
+                if tempPath != "":
+                    raise FilePathException('Not a valid audio file', f'Chosen file: {tempPath}')
+        except FilePathException as e:
+            print(e)
+            return False
 
     # === Processing function and it's helpers ===
 

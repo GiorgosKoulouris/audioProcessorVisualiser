@@ -18,27 +18,6 @@ class Test_Main(unittest.TestCase):
         """
 
         self.d = DspVisualiser()
-        """
-        # Interpreter and script related
-        self.d.srcTopLvlPath = os.getcwd() + '/Source'
-        self.d.interpreterPath = sys.executable
-
-        # Audio file related
-        self.d.fileImported = False
-        self.d.importPath = "~/Desktop"
-
-        # File and Signal related
-        self.d.sampleRate = 44100
-        self.d.convertToMono = False
-        self.d.inputS = np.zeros(self.d.sampleRate)
-        self.d.durationInSecs = 1
-        self.d.numChannels = 2
-        self.d.numSamples = self.d.sampleRate
-        self.d.output = self.d.inputS.copy()
-
-        # Plotting options
-        self.d.includeWavesInGainPlot = False
-        """
 
         # Interpreter and script related
         self.srcTopLvlPath = os.getcwd() + '/Source'
@@ -76,28 +55,42 @@ class Test_Main(unittest.TestCase):
     def test_initGUI_defaultParentOK(self):
         self.d.mainWindow = Tk()
         self.d.initGUI()
-        self.assertEqual(self.d.p2Frame.parent, self.d.mainWindow, 'mainWindow as default parent of GUI not passed correctly')
+        self.assertEqual(self.d.p2Frame.parent, self.d.mainWindow,
+                         'mainWindow as default parent of GUI not passed correctly')
 
     # =============== chooseFile method =================
     @mock.patch("Source.main.askopenfilename",
                 return_value='/my/Random/audioFile.wav')
-    def test_chooseFile_capturedValidPath(self, mock_audioFile):
+    def test_chooseFile_behaviourOn_validInput(self, mock_audioFile):
+        self.d.importPath = 'old/path.wav'
         self.d.chooseFile()
         expected = '/my/Random/audioFile.wav'
         self.assertEqual(self.d.importPath, expected,
+                         'Did not update importPath when input was valid')
+        self.assertTrue(self.d.fileImported,
+                        'Did not update fileImported when input was valid')
+
+    @mock.patch("Source.main.askopenfilename",
+                return_value='/my/invalid/file.mlk')
+    def test_chooseFile_behaviourOn_invalidInput(self, mock_audioFile):
+        valueBefore = 'legit/audio/file.wav'
+        self.d.importPath = valueBefore
+        self.d.chooseFile()
+        self.assertEqual(self.d.importPath, valueBefore,
                          'Did not update importPath')
+        self.assertFalse(self.d.fileImported,
+                         'Did not update fileImported when input was valid')
 
     @mock.patch("Source.main.askopenfilename", return_value='invalid.sth')
     def test_chooseFile_raise_OnInvalidPath(self, mock_audioFile):
-        with self.assertRaises(Exception,
-                               msg='Not raised when file wasnt an audio file'):
-            self.d.chooseFile()
+        self.assertFalse(self.d.chooseFile())
 
     @mock.patch('os.path.isfile', return_value=False)
     @mock.patch('Source.main.askdirectory', return_value='some/dir')
     def test_setInterpreterPath_raisedOn_invalidInput(self,
-                                             mock_isFile,
-                                             mock_askdirectory):
+                                                      mock_isFile,
+                                                      mock_askdirectory):
+        print()
         startValue = 'random/Value'
         self.d.interpreterPath = startValue
         # Should raise
