@@ -112,6 +112,7 @@ class DspVisualiser:
 
         if tempPath.endswith('.py') and os.path.isfile(tempPath):
             self.userCodePath = tempPath
+            return True
         else:
             try:
                 raise FilePathException('Invalid path. Should be an existing .py file',
