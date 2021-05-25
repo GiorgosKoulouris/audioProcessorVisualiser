@@ -6,6 +6,7 @@ from unittest import mock
 
 import numpy as np
 from Source.main import DspVisualiser
+import Source.main
 
 
 class Test_Main(unittest.TestCase):
@@ -186,9 +187,19 @@ class Test_Main(unittest.TestCase):
                                                        mock_load,
                                                        mock_unpack,
                                                        mock_pack):
+
+        # Mock with an attribute 'return code' to be returned by subprocess.run
+        ret = mock.Mock()
+        attrs = {'returncode': 0}
+        ret.configure_mock(**attrs)
+
+        # The actual object that is going to be the dummy of subrocess.run
+        Source.main.subprocess.run = mock.Mock(return_value=ret)
+
         # FIXME: mock RangeFrame.getValues() to isolate the test
         argset = [['valid.wav', None, 1, 2, True],
                   ['valid.wav', None, 4, 12, True]]
+
         print()
         for i in range(len(argset)):
             self.d.mainWindow = Tk()
