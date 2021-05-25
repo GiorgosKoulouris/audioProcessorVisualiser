@@ -86,6 +86,55 @@ class Test_Main(unittest.TestCase):
     def test_chooseFile_raise_OnInvalidPath(self, mock_audioFile):
         self.assertFalse(self.d.chooseFile())
 
+    # ============== setCustomUserScriptPath method ================= 
+    def test_setCustomUserScriptPath_acceptValueOn_validInput(self):
+        initialPath = 'initial/value.py'
+        inputs = [None, 'random/Script.py']
+        Source.main.askopenfilename = mock.Mock(return_value='random/Script.py')
+        Source.main.os.path.isfile = mock.Mock(return_value=True)
+        for i in range(len(inputs)):
+            
+            self.d.userCodePath = initialPath
+            with self.subTest():
+                print(f'Test No {i}')
+                print(f'Arguments: {inputs[i]}')
+                self.d.setCustomUserScriptPath(inputs[i])
+                Source.main.os.path.isfile.assert_called()
+                if i == 0:
+                    Source.main.askopenfilename.assert_called()
+                self.assertEqual(self.d.userCodePath, 'random/Script.py')
+
+    def test_setCustomUserScriptPath_rejectValueOn_invalidInput(self):
+        initialPath = 'initial/value.py'
+        inputs = [None, 'random/invalidFile.cpp']
+        Source.main.askopenfilename = mock.Mock(return_value='random/invalidFile.cpp')
+        Source.main.os.path.isfile = mock.Mock(return_value=True)
+        for i in range(len(inputs)):
+            self.d.userCodePath = initialPath
+            with self.subTest():
+                print(f'Test No {i}')
+                print(f'Arguments: {inputs[i]}')
+                self.d.setCustomUserScriptPath(inputs[i])
+                if i == 0:
+                    Source.main.askopenfilename.assert_called()
+                self.assertEqual(self.d.userCodePath, initialPath)
+
+    def test_setCustomUserScriptPath_raisesOn_invalidInput(self):
+        initialPath = 'initial/value.py'
+        inputs = [None, 'random/invalidFile.cpp']
+        Source.main.askopenfilename = mock.Mock(return_value='random/invalidFile.cpp')
+        Source.main.os.path.isfile = mock.Mock(return_value=True)
+        for i in range(len(inputs)):
+            self.d.userCodePath = initialPath
+            with self.subTest():
+                print(f'Test No {i}')
+                print(f'Arguments: {inputs[i]}')
+                self.assertFalse(self.d.setCustomUserScriptPath(inputs[i]))
+                if i == 0:
+                    Source.main.askopenfilename.assert_called()
+
+
+    # ============== setInterpreterPath method ================= 
     @mock.patch('os.path.isfile', return_value=False)
     @mock.patch('Source.main.askdirectory', return_value='some/dir')
     def test_setInterpreterPath_raisedOn_invalidInput(self,
@@ -109,6 +158,7 @@ class Test_Main(unittest.TestCase):
         # Should not change value
         self.assertEqual(self.d.interpreterPath, startValue)
 
+    # ============== processAudio method ================= 
     @mock.patch('Source.main.pack_ndarray_to_file',
                 return_value=True,
                 autospec=True)
