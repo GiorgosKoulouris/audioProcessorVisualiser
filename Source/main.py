@@ -119,14 +119,23 @@ class DspVisualiser:
             except FilePathException as e:
                 print(e)
 
-    def updateCodeBox(self):
+    def updateTextBox(self):
         path = self.userCodePath
-        with open(path, 'r') as userPy:
-            data = userPy.read()
-            self.codeBox.insert('1.0', data)
-            userPy.close()
+        try:
+            # Check if file is still there
+            if not os.path.isfile(path):
+                raise FilePathException('Script path invalid or does not exist',
+                                            f'Chosen path: {path}')
+            # Copy script's context in TextBox
+            with open(path, 'r') as userPy:
+                data = userPy.read()
+                self.codeBox.delete('1.0', 'end')
+                self.codeBox.insert('1.0', data)
+                userPy.close()
+        except FilePathException as e:
+            print(e)
 
-    def updateCodeBlock(self):
+    def updateScriptFile(self):
         userIn = self.codeBox.get("1.0", 'end-1c')
         path = self.userCodePath
         with open(path, 'w') as userPy:
@@ -462,13 +471,17 @@ class DspVisualiser:
         self.codeBox = ScrolledText()
         self.codeBox.place(x=500, y=100, width=670, height=400)
 
-        self.updateCodeButton = Button(
-            window, text='Update code', command=self.updateCodeBlock)
-        self.updateCodeButton.place(x=530, y=520, width=150, height=25)
+        self.updateTextButton = Button(
+            window, text='Update text', command=self.updateTextBox)
+        self.updateTextButton.place(x=700, y=520, width=150, height=25)
+
+        self.updateScriptButton = Button(
+            window, text='Update script', command=self.updateScriptFile)
+        self.updateScriptButton.place(x=530, y=520, width=150, height=25)
 
         self.setUserScriptPathButton = Button(
             window, text='Choose script path', command=self.setCustomUserScriptPath)
-        self.setUserScriptPathButton.place(x=700, y=520, width=180, height=25)
+        self.setUserScriptPathButton.place(x=870, y=520, width=180, height=25)
 
         # ===================== Plotting options ====================
         self.includeWavesInGainPlot = False
@@ -487,7 +500,7 @@ class DspVisualiser:
         self.mainWindow = Tk()
         self.initGUI()
         self.initAssetScripts()
-        self.updateCodeBox()
+        self.updateTextBox()
         self.mainWindow.mainloop()
         self.initAssetScripts()
 
