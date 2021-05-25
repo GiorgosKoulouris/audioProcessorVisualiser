@@ -272,6 +272,18 @@ class DspVisualiser:
             if self.p4Frame.choice != 0:
                 par4 = self.p4Frame.getValue()
 
+            # If user used a custom script make sure its context is copied in the assetscript
+            assetScriptPath = self.srcTopLvlPath + '/Assets/userCode.py'
+            if self.userCodePath != assetScriptPath:
+                if not os.path.isfile(self.userCodePath):
+                    raise FilePathException('File path invalid or does not exist',
+                                             f'Chosen path: {self.userCodePath}')
+                with open(self.userCodePath, 'r') as i:
+                    userText = i.read()
+                
+                with open(assetScriptPath, 'w') as i:
+                    i.write(userText)
+
             # Save input ndarray as a binary
             scriptPath = self.srcTopLvlPath + '/Assets/applyUserCode.py'
 
@@ -300,6 +312,10 @@ class DspVisualiser:
             print(e)
             return False
         except ScriptReturnCodeException as e:
+            errorMsg = e.message
+            print(e)
+            return False
+        except FilePathException as e:
             errorMsg = e.message
             print(e)
             return False
