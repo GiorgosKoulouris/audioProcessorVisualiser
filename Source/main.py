@@ -37,6 +37,7 @@ class DspVisualiser:
     def __init__(self) -> None:
         # Interpreter and script related
         self.srcTopLvlPath = os.getcwd() + '/Source'
+        self.userCodePath = self.srcTopLvlPath + '/Assets/userCode.py'
         self.interpreterPath = sys.executable
 
         # Audio file related
@@ -103,23 +104,38 @@ class DspVisualiser:
 
     # === CodeBlock functions and it's helpers ===
 
+    def setCustomUserScriptPath(self, path=None):
+        if path is None:
+            tempPath = askopenfilename()
+        else:
+            tempPath = path
+
+        if tempPath.endswith('.py') and os.path.isfile(tempPath):
+            self.userCodePath = tempPath
+        else:
+            try:
+                raise FilePathException('Invalid path. Should be an existing .py file',
+                                         f'Chosen path: {tempPath}')
+            except FilePathException as e:
+                print(e)
+
     def updateCodeBox(self):
-        codeFilePath = self.srcTopLvlPath + '/Assets/userCode.py'
-        with open(codeFilePath, 'r') as userPy:
+        path = self.userCodePath
+        with open(path, 'r') as userPy:
             data = userPy.read()
             self.codeBox.insert('1.0', data)
             userPy.close()
 
     def updateCodeBlock(self):
         userIn = self.codeBox.get("1.0", 'end-1c')
-        codeFilePath = self.srcTopLvlPath + '/Assets/userCode.py'
-        with open(codeFilePath, 'w') as userPy:
+        path = self.userCodePath
+        with open(path, 'w') as userPy:
             userPy.write(userIn)
             userPy.close()
 
     # Create or overwrite asset scripts to avoid any errors
 
-    def createAssetScripts(self):
+    def initAssetScripts(self):
         # Create/Overwrite userCode.py
         codeFilePath = self.srcTopLvlPath + '/Assets/userCode.py'
         with open(codeFilePath, 'w') as userPy:
@@ -429,9 +445,14 @@ class DspVisualiser:
         # ===================== Code Entry ====================
         self.codeBox = ScrolledText()
         self.codeBox.place(x=500, y=100, width=670, height=400)
+
         self.updateCodeButton = Button(
             window, text='Update code', command=self.updateCodeBlock)
-        self.updateCodeButton.place(x=675, y=520, width=220, height=25)
+        self.updateCodeButton.place(x=530, y=520, width=150, height=25)
+
+        self.setUserScriptPathButton = Button(
+            window, text='Choose script path', command=self.setCustomUserScriptPath)
+        self.setUserScriptPathButton.place(x=700, y=520, width=180, height=25)
 
         # ===================== Plotting options ====================
         self.includeWavesInGainPlot = False
@@ -449,10 +470,10 @@ class DspVisualiser:
         self.initPaths()
         self.mainWindow = Tk()
         self.initGUI()
-        self.createAssetScripts()
+        self.initAssetScripts()
         self.updateCodeBox()
         self.mainWindow.mainloop()
-        self.createAssetScripts()
+        self.initAssetScripts()
 
 
 def runApp():
