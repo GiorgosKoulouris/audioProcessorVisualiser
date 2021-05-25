@@ -4,10 +4,12 @@
 Intended Usage (with implemented functionality):
     1. Choose your python interpeter path and source file path
     2. Click "Choose File" to select an audio file to use
-    3. Define start and end times (in secs) and click "Process Part" to process the selected section
+    3. Define start and end times (in secs) and
+        click "Process Part" to process the selected section
     4. Write your own code for the signal processing and press updateButton
     5. Click the Plot Gain button to show a plot of Gain over Time
-        --> checking the checkbutton on the left also plots the original and processed signal
+        --> checking the checkbutton on the left also
+            plots the original and processed signal
 
 ===============================================================================
 """
@@ -21,16 +23,14 @@ from tkinter.scrolledtext import ScrolledText
 from tkinter.ttk import Button, Checkbutton
 
 from bloscpack import pack_ndarray_to_file, unpack_ndarray_from_file
-import librosa as lr
+from librosa.core import load
 import matplotlib.pyplot as plt
 import numpy as np
 
 sys.path.append('./')
-from Source.exceptions import ScriptReturnCodeException, UserInputExeption, FilePathException
+from Source.exceptions import FilePathException, ScriptReturnCodeException, UserInputExeption
 from Source.parameterFrame import ParameterFrame
 from Source.renderRangeFrame import RenderRangeFrame
-
-
 
 
 class DspVisualiser:
@@ -65,11 +65,19 @@ class DspVisualiser:
         # TODO: Find a way to get the actual file, not the symlink.
         #   This method involves guessing that user initializes the program
         #   with the same interpreter he is going to provide while using it
-        major = str(sys.version_info.major)
-        minor = str(sys.version_info.minor)
-        pyVersionSuffix = '/python' + major + '.' + minor
-        self.interpreterPath = askdirectory() + pyVersionSuffix
-        print(self.interpreterPath)
+        userInput = askdirectory()
+        result = userInput + '/python'
+        if os.path.isfile(result):
+            self.interpreterPath = result
+            return True
+        else:
+            try:
+                raise UserInputExeption(
+                            "Directory does not contain a python interpreter",
+                            error=str(f'Selected Path: {userInput}'))
+            except UserInputExeption as e:
+                print(e)
+                return False
 
     def setSourceTopLvlDirectory(self):
         """Display pop-up window to let user set the source code directory"""
@@ -83,7 +91,8 @@ class DspVisualiser:
 
         # FIXME: Canceling on fileChooser causes path abnormalities
         interPathButton = Button(
-            popUp, text='Set interpreter path', command=self.setInterpreterPath)
+                                popUp, text='Set interpreter path',
+                                command=self.setInterpreterPath)
         srcPathButton = Button(popUp, text='Set source path',
                                command=self.setSourceTopLvlDirectory)
 
@@ -163,22 +172,30 @@ class DspVisualiser:
 
     def chooseFile(self):
         """Display pop-up window to let user select an audio file"""
+        # FIXME: Pressing cancel button should not throw an exception
         tempPath = askopenfilename()
-        if tempPath.endswith(".wav"):
-            self.importPath = tempPath
-            self.fileImported = True
-            del tempPath
-        else:
-            # FIXME: Pressing cancel button should not throw an exception
-            if not self.importPath.endswith('.wav'):
-                self.fileImported = False
-            raise Exception('Not a valid audio file')
+        try:
+            if tempPath.endswith(".wav"):
+                self.importPath = tempPath
+                self.fileImported = True
+                del tempPath
+                return True
+            else:
+                # If previously selected file was invalid ensure fileImported is False
+                if not self.importPath.endswith('.wav'):
+                    self.fileImported = False
+                if tempPath != "":
+                    raise FilePathException('Not a valid audio file', f'Chosen file: {tempPath}')
+        except FilePathException as e:
+            print(e)
+            return False
 
     # === Processing function and it's helpers ===
 
     # Process the audio file
 
-    def processAudio(self, path=None, resampleRate=None, rS=None, rE=None, mono=None):
+    def processAudio(self, path=None, resampleRate=None, rS=None,
+                     rE=None, mono=None):
         """Process the selected range with the given settings"""
         """Range = Start - End
         Resample = True or False (needs new sampleRate if True)
@@ -194,80 +211,82 @@ class DspVisualiser:
 
         # FIXME: These values should be evaluated seperately
         if rS is None and rE is None and mono is None:
-            rS, rE, self.convertToMono = self.rangeFrame.getValues()
+            rS, rE, mono = self.rangeFrame.getValues()
+            self.convertToMono = mono
 
         rangeIsCorrect = (rS >= 0) and (rE > rS)
-        # Check if range is valid
-        if not rangeIsCorrect:
-            try:
+        try:
+            # Check if range is valid
+            if not rangeIsCorrect:
+                raise UserInputExeption("Invalid time range",
+                                        f'Start = {rS} > End = {rE}')
+
+            # Check if it a valid audio file supported
+            if predifinedInput and not self.fileImported:
+                raise UserInputExeption("No audio file selected",
+                    'Define path using the Choose File button or by explicitly passing it as an argument')
+
+            if not predifinedInput and not path.endswith(".wav"):
                 raise UserInputExeption(
-                    "Invalid time range", f'    {rS} > {rE}')
-            except UserInputExeption as e:
-                errorMsg = e.message
-                print(e)
-                print(e.error)
-        # Check if it a valid audio file supported
-        if predifinedInput and not self.fileImported:
-            try:
-                raise UserInputExeption("No audio file selected")
-            except UserInputExeption as e:
-                errorMsg = e.message
-                print(e)
+                    "No valid audio extension (.wav)",
+                    f'Given path {path}')
 
-        if not predifinedInput and not path.endswith(".wav"):
-            try:
-                raise UserInputExeption(
-                    "No valid audio extension", '  Should be a .wav file')
-            except UserInputExeption as e:
-                errorMsg = e.message
-                print(e)
-                print(e.error)
-    # TODO: Print errorMsg on a pop-up window
+            # ============ Calculating input and variables ==============
+            self.durationInSecs = rE - rS
+            self.inputS, self.sampleRate = load(self.importPath,
+                                                sr=None,
+                                                offset=rS,
+                                                mono=mono,
+                                                duration=self.durationInSecs)
 
-        # ============ Calculating input and variables ==============
-        self.durationInSecs = rE - rS
-        self.inputS, self.sampleRate = lr.load(
-            self.importPath, sr=None, offset=rS, mono=self.convertToMono, duration=self.durationInSecs)
+            if mono:
+                numChannels = 1
+                numSamples = len(self.inputS)
+            else:
+                numChannels = 2
+                numSamples = len(self.inputS[0])
+            # User parameters
+            par1 = par2 = par3 = par4 = 0
+            if self.p1Frame.choice != 0:
+                par1 = self.p1Frame.getValue()
+            if self.p2Frame.choice != 0:
+                par2 = self.p2Frame.getValue()
+            if self.p3Frame.choice != 0:
+                par3 = self.p3Frame.getValue()
+            if self.p4Frame.choice != 0:
+                par4 = self.p4Frame.getValue()
 
-        if self.convertToMono:
-            numChannels = 1
-            numSamples = len(self.inputS)
-        else:
-            numChannels = 2
-            numSamples = len(self.inputS[0])
-        # User parameters
-        par1 = par2 = par3 = par4 = 0
-        if self.p1Frame.choice != 0:
-            par1 = self.p1Frame.getValue()
-        if self.p2Frame.choice != 0:
-            par2 = self.p2Frame.getValue()
-        if self.p3Frame.choice != 0:
-            par3 = self.p3Frame.getValue()
-        if self.p4Frame.choice != 0:
-            par4 = self.p4Frame.getValue()
+            # Save input ndarray as a binary
+            scriptPath = self.srcTopLvlPath + '/Assets/applyUserCode.py'
 
-        # Save input ndarray as a binary
-        scriptPath = self.srcTopLvlPath + '/Assets/applyUserCode.py'
+            arrayFilePath = self.srcTopLvlPath + '/Assets/dspVisInputArray.txt'
+            pack_ndarray_to_file(self.inputS, arrayFilePath)
+            # Run asset scripts
+            args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples),
+                    str(self.sampleRate),
+                    str(par1), str(par2), str(par3), str(par4)]
 
-        arrayFilePath = self.srcTopLvlPath + '/Assets/dspVisInputArray.txt'
-        pack_ndarray_to_file(self.inputS, arrayFilePath)
-        # Run asset scripts
-        args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples), str(
-            self.sampleRate), str(par1), str(par2), str(par3), str(par4)]
-
-        processCheck = subprocess.run(args, capture_output=True, text=True)
-
-        if processCheck.returncode != 0:
-            try:
+            processCheck = subprocess.run(args, capture_output=True, text=True)
+            if processCheck.returncode != 0:
                 raise ScriptReturnCodeException(
-                    'Running the audio processing script failed', processCheck.stderr)
-            except ScriptReturnCodeException as e:
-                print(e)
-                print(e.error)
-        del self.output
-        self.output = unpack_ndarray_from_file(arrayFilePath)
-        # Get rid of any previously created/processed arrays
-        gc.collect()
+                                'Running the audio processing script failed',
+                                processCheck.stderr)
+
+            # Delete the reference to the old ndarray
+            if self.output is not None:
+                del self.output
+
+            self.output = unpack_ndarray_from_file(arrayFilePath)
+            # Get rid of any previously created/processed arrays
+            gc.collect()
+        except UserInputExeption as e:
+            errorMsg = e.message
+            print(e)
+            return False
+        except ScriptReturnCodeException as e:
+            errorMsg = e.message
+            print(e)
+            return False
 
     # ================= Plotting functions ======================
 
@@ -328,7 +347,8 @@ class DspVisualiser:
 
     def plotGain(self, inS=None, outS=None, isMono=None):
         """This function plots the gain reduction over time"""
-        """If <includeWavesInGainPlot = True>, it also plots a stacked overview of the waveforms"""
+        """If <includeWavesInGainPlot = True>, it also plots
+        a stacked overview of the waveforms"""
 
         # Check if there are arguments passed
         if inS is None:
@@ -416,7 +436,9 @@ class DspVisualiser:
         # ===================== Plotting options ====================
         self.includeWavesInGainPlot = False
         self.wavesInGainButton = Checkbutton(
-            variable=self.includeWavesInGainPlot, command=self.setIncludeWavesInGain)
+            variable=self.includeWavesInGainPlot,
+            command=self.setIncludeWavesInGain)
+
         self.wavesInGainButton.place(x=50, y=150, width=20, height=20)
 
         self.plotGainButton = Button(
