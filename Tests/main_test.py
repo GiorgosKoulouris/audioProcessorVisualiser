@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 from tkinter import Tk
+from tkinter.scrolledtext import ScrolledText
 from unittest import mock
 
 import numpy as np
@@ -21,24 +22,24 @@ class Test_Main(unittest.TestCase):
         self.d = DspVisualiser()
 
         # Interpreter and script related
-        self.srcTopLvlPath = os.getcwd() + '/Source'
-        self.interpreterPath = sys.executable
+        self.d.srcTopLvlPath = os.getcwd() + '/Source'
+        self.d.interpreterPath = sys.executable
 
         # Audio file related
-        self.fileImported = False
+        self.d.fileImported = False
         self.importPath = "~/Desktop"
 
         # File and Signal related
-        self.sampleRate = 44100
-        self.convertToMono = False
-        self.inputS = np.zeros(self.sampleRate)
-        self.durationInSecs = 1
-        self.numChannels = 2
-        self.numSamples = self.sampleRate
-        self.output = self.inputS.copy()
+        self.d.sampleRate = 44100
+        self.d.convertToMono = False
+        self.d.inputS = np.zeros(self.d.sampleRate)
+        self.d.durationInSecs = 1
+        self.d.numChannels = 2
+        self.d.numSamples = self.d.sampleRate
+        self.d.output = self.d.inputS.copy()
 
         # Plotting options
-        self.includeWavesInGainPlot = False
+        self.d.includeWavesInGainPlot = False
 
     def tearDown(self):
         del self.d
@@ -132,6 +133,82 @@ class Test_Main(unittest.TestCase):
                 self.assertFalse(self.d.setCustomUserScriptPath(inputs[i]))
                 if i == 0:
                     Source.main.askopenfilename.assert_called()
+
+    # ================== updateTextBox method =================
+    @mock.patch('Source.main.open')   
+    def test_updateTextBox_updatedOn_existingFile(self, mock_open):
+        # Initiate codeBox
+        self.d.codeBox = ScrolledText()
+        self.d.codeBox.insert('1.0', 'Old Text')
+
+        # Mock the read method when open is used as a context manager
+        expectedValue = 'New Text'
+        mock_open.return_value.__enter__.return_value.read.return_value = expectedValue
+
+        # Mock the 'isValidFile' test
+        Source.main.os.path.isfile = mock.Mock()
+        Source.main.os.path.isfile.return_value = True
+
+        # Run method
+        self.d.updateTextBox()
+
+        # Check that mocks were called
+        Source.main.os.path.isfile.assert_called()
+        mock_open.assert_called()
+
+        # Get new value and compare
+        newValue = self.d.codeBox.get('1.0', 'end-1c')
+        self.assertEqual(newValue, expectedValue)
+
+    @mock.patch('Source.main.open')
+    def test_updateTextBox_rejectOn_invalidFile(self, mock_open):
+        # Initiate codeBox
+        self.d.codeBox = ScrolledText()
+        self.d.codeBox.insert('1.0', 'Old Text')
+
+        # Get initial value for reference
+        oldValue = self.d.codeBox.get('1.0', 'end-1c')
+
+        # Mock the read method when open is used as a context manager
+        dummyValue = 'New Text'
+        mock_open.return_value.__enter__.return_value.read.return_value = dummyValue
+
+        # Mock the 'isValidFile' test
+        Source.main.os.path.isfile = mock.Mock()
+        Source.main.os.path.isfile.return_value = False
+
+        # Run method
+        self.d.updateTextBox()
+
+        # Check that mocks were called
+        Source.main.os.path.isfile.assert_called()
+        mock_open.assert_not_called()
+
+        # Get new value and compare
+        newValue = self.d.codeBox.get('1.0', 'end-1c')
+        self.assertEqual(newValue, oldValue)
+
+    @mock.patch('Source.main.open')
+    def test_updateTextBox_raiseAndHandleOn_invalidFile(self, mock_open):
+        # Initiate codeBox
+        self.d.codeBox = ScrolledText()
+        self.d.codeBox.insert('1.0', 'Old Text')
+
+        # Mock the read method when open is used as a context manager
+        dummyValue = 'New Text'
+        mock_open.return_value.__enter__.return_value.read.return_value = dummyValue
+
+        # Mock the 'isValidFile' test
+        Source.main.os.path.isfile = mock.Mock()
+        Source.main.os.path.isfile.return_value = False
+
+        # Run method
+        self.assertFalse(self.d.updateTextBox())
+
+        # Check that mocks were called
+        Source.main.os.path.isfile.assert_called()
+        mock_open.assert_not_called()
+
 
 
     # ============== setInterpreterPath method ================= 
