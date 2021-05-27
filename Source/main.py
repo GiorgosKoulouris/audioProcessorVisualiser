@@ -133,8 +133,10 @@ class DspVisualiser:
                 self.codeBox.delete('1.0', 'end')
                 self.codeBox.insert('1.0', data)
                 userPy.close()
+            return True
         except FilePathException as e:
             print(e)
+            return False
 
     def updateScriptFile(self):
         userIn = self.codeBox.get("1.0", 'end-1c')
