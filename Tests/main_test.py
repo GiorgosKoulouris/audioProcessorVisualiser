@@ -57,8 +57,9 @@ class Test_Main(unittest.TestCase):
     def test_initGUI_defaultParentOK(self):
         self.d.mainWindow = Tk()
         self.d.initGUI()
-        self.assertEqual(self.d.p2Frame.parent, self.d.mainWindow,
-                         'mainWindow as default parent of GUI not passed correctly')
+        self.assertEqual(
+            self.d.p2Frame.parent, self.d.mainWindow,
+            'mainWindow as default parent of GUI not passed correctly')
 
     # =============== chooseFile method =================
     @mock.patch("Source.main.askopenfilename",
@@ -87,14 +88,15 @@ class Test_Main(unittest.TestCase):
     def test_chooseFile_raise_OnInvalidPath(self, mock_audioFile):
         self.assertFalse(self.d.chooseFile())
 
-    # ============== setCustomUserScriptPath method ================= 
+    # ============== setCustomUserScriptPath method =================
     def test_setCustomUserScriptPath_acceptValueOn_validInput(self):
         initialPath = 'initial/value.py'
         inputs = [None, 'random/Script.py']
-        Source.main.askopenfilename = mock.Mock(return_value='random/Script.py')
+        Source.main.askopenfilename = \
+            mock.Mock(return_value='random/Script.py')
         Source.main.os.path.isfile = mock.Mock(return_value=True)
         for i in range(len(inputs)):
-            
+
             self.d.userCodePath = initialPath
             with self.subTest():
                 print(f'Test No {i}')
@@ -108,8 +110,11 @@ class Test_Main(unittest.TestCase):
     def test_setCustomUserScriptPath_rejectValueOn_invalidInput(self):
         initialPath = 'initial/value.py'
         inputs = [None, 'random/invalidFile.cpp']
-        Source.main.askopenfilename = mock.Mock(return_value='random/invalidFile.cpp')
+        Source.main.askopenfilename =\
+            mock.Mock(return_value='random/invalidFile.cpp')
+
         Source.main.os.path.isfile = mock.Mock(return_value=True)
+
         for i in range(len(inputs)):
             self.d.userCodePath = initialPath
             with self.subTest():
@@ -123,8 +128,11 @@ class Test_Main(unittest.TestCase):
     def test_setCustomUserScriptPath_raisesOn_invalidInput(self):
         initialPath = 'initial/value.py'
         inputs = [None, 'random/invalidFile.cpp']
-        Source.main.askopenfilename = mock.Mock(return_value='random/invalidFile.cpp')
+        Source.main.askopenfilename =\
+            mock.Mock(return_value='random/invalidFile.cpp')
+
         Source.main.os.path.isfile = mock.Mock(return_value=True)
+
         for i in range(len(inputs)):
             self.d.userCodePath = initialPath
             with self.subTest():
@@ -135,7 +143,7 @@ class Test_Main(unittest.TestCase):
                     Source.main.askopenfilename.assert_called()
 
     # ================== updateTextBox method =================
-    @mock.patch('Source.main.open')   
+    @mock.patch('Source.main.open')
     def test_updateTextBox_updatedOn_existingFile(self, mock_open):
         # Initiate codeBox
         self.d.codeBox = ScrolledText()
@@ -143,7 +151,8 @@ class Test_Main(unittest.TestCase):
 
         # Mock the read method when open is used as a context manager
         expectedValue = 'New Text'
-        mock_open.return_value.__enter__.return_value.read.return_value = expectedValue
+        mock_open.return_value.__enter__.return_value.\
+            read.return_value = expectedValue
 
         # Mock the 'isValidFile' test
         Source.main.os.path.isfile = mock.Mock()
@@ -171,7 +180,8 @@ class Test_Main(unittest.TestCase):
 
         # Mock the read method when open is used as a context manager
         dummyValue = 'New Text'
-        mock_open.return_value.__enter__.return_value.read.return_value = dummyValue
+        mock_open.return_value.__enter__.return_value.\
+            read.return_value = dummyValue
 
         # Mock the 'isValidFile' test
         Source.main.os.path.isfile = mock.Mock()
@@ -196,7 +206,8 @@ class Test_Main(unittest.TestCase):
 
         # Mock the read method when open is used as a context manager
         dummyValue = 'New Text'
-        mock_open.return_value.__enter__.return_value.read.return_value = dummyValue
+        mock_open.return_value.__enter__.return_value.\
+            read.return_value = dummyValue
 
         # Mock the 'isValidFile' test
         Source.main.os.path.isfile = mock.Mock()
@@ -209,9 +220,8 @@ class Test_Main(unittest.TestCase):
         Source.main.os.path.isfile.assert_called()
         mock_open.assert_not_called()
 
+    # ============== setInterpreterPath method =================
 
-
-    # ============== setInterpreterPath method ================= 
     @mock.patch('os.path.isfile', return_value=False)
     @mock.patch('Source.main.askdirectory', return_value='some/dir')
     def test_setInterpreterPath_raisedOn_invalidInput(self,
@@ -235,7 +245,7 @@ class Test_Main(unittest.TestCase):
         # Should not change value
         self.assertEqual(self.d.interpreterPath, startValue)
 
-    # ============== processAudio method ================= 
+    # ============== processAudio method =================
     @mock.patch('Source.main.pack_ndarray_to_file',
                 return_value=True,
                 autospec=True)
