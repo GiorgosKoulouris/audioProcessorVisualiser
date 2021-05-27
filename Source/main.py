@@ -116,7 +116,7 @@ class DspVisualiser:
         else:
             try:
                 raise FilePathException('Invalid path. Should be an existing .py file',
-                                         f'Chosen path: {tempPath}')
+                                        f'Chosen path: {tempPath}')
             except FilePathException as e:
                 print(e)
 
@@ -126,7 +126,7 @@ class DspVisualiser:
             # Check if file is still there
             if not os.path.isfile(path):
                 raise FilePathException('Script path invalid or does not exist',
-                                            f'Chosen path: {path}')
+                                        f'Chosen path: {path}')
             # Copy script's context in TextBox
             with open(path, 'r') as userPy:
                 data = userPy.read()
@@ -209,7 +209,8 @@ class DspVisualiser:
                 del tempPath
                 return True
             else:
-                # If previously selected file was invalid ensure fileImported is False
+                # If previously selected file was invalid,
+                # ensure fileImported is False
                 if not self.importPath.endswith('.wav'):
                     self.fileImported = False
                 if tempPath != "":
@@ -284,15 +285,16 @@ class DspVisualiser:
             if self.p4Frame.choice != 0:
                 par4 = self.p4Frame.getValue()
 
-            # If user used a custom script make sure its context is copied in the assetscript
+            # If user used a custom script make sure its context
+            # gets copied in the assetscript
             assetScriptPath = self.srcTopLvlPath + '/Assets/userCode.py'
             if self.userCodePath != assetScriptPath:
                 if not os.path.isfile(self.userCodePath):
                     raise FilePathException('File path invalid or does not exist',
-                                             f'Chosen path: {self.userCodePath}')
+                                            f'Chosen path: {self.userCodePath}')
                 with open(self.userCodePath, 'r') as i:
                     userText = i.read()
-                
+
                 with open(assetScriptPath, 'w') as i:
                     i.write(userText)
 
@@ -302,8 +304,8 @@ class DspVisualiser:
             arrayFilePath = self.srcTopLvlPath + '/Assets/dspVisInputArray.txt'
             pack_ndarray_to_file(self.inputS, arrayFilePath)
             # Run asset scripts
-            args = [scriptPath, arrayFilePath, str(numChannels), str(numSamples),
-                    str(self.sampleRate),
+            args = [scriptPath, arrayFilePath, str(numChannels),
+                    str(numSamples), str(self.sampleRate),
                     str(par1), str(par2), str(par3), str(par4)]
 
             processCheck = subprocess.run(args, capture_output=True, text=True)
@@ -483,7 +485,8 @@ class DspVisualiser:
         self.updateScriptButton.place(x=530, y=520, width=150, height=25)
 
         self.setUserScriptPathButton = Button(
-            window, text='Choose script path', command=self.setCustomUserScriptPath)
+            window, text='Choose script path',
+            command=self.setCustomUserScriptPath)
         self.setUserScriptPathButton.place(x=870, y=520, width=180, height=25)
 
         # ===================== Plotting options ====================
