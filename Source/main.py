@@ -17,6 +17,7 @@ import gc
 import os
 import subprocess
 import sys
+import pickle
 from tkinter import Tk
 from tkinter.filedialog import askdirectory, askopenfilename
 from tkinter.scrolledtext import ScrolledText
@@ -178,20 +179,23 @@ class DspVisualiser:
             applyUserPY.write('#!' + self.interpreterPath + '\n\n')
             applyUserPY.write(
                 'from bloscpack import unpack_ndarray_from_file, pack_ndarray_to_file\n')
+            applyUserPY.write('import pickle\n')   
             applyUserPY.write('import sys\n')
             applyUserPY.write('from userCode import userCode\n\n')
 
             applyUserPY.write('inS = unpack_ndarray_from_file(sys.argv[1])\n')
             applyUserPY.write('numC = int(sys.argv[2])\n')
             applyUserPY.write('numS = int(sys.argv[3])\n')
-            applyUserPY.write('sRate = int(sys.argv[4])\n')
-            applyUserPY.write('par1 = sys.argv[5]\n')
-            applyUserPY.write('par2 = sys.argv[6]\n')
-            applyUserPY.write('par3 = sys.argv[7]\n')
-            applyUserPY.write('par4 = sys.argv[8]\n\n')
+            applyUserPY.write('sRate = int(sys.argv[4])\n\n')
+
+            applyUserPY.write('path = sys.argv[5]\n\n')
+
+            applyUserPY.write('with open(path, "rb") as p:\n')
+            applyUserPY.write('    pList = pickle.load(p)\n')
+            applyUserPY.write('    p.close()\n\n')
 
             applyUserPY.write(
-                'output = userCode(inS, numC, numS, sRate, par1, par2, par3, par4)\n\n')
+                'output = userCode(inS, numC, numS, sRate, pList[0], pList[1], pList[2], pList[3])\n\n')
             applyUserPY.write('pack_ndarray_to_file(output, sys.argv[1])\n')
 
             applyUserPY.close()
@@ -285,6 +289,12 @@ class DspVisualiser:
             if self.p4Frame.choice != 0:
                 par4 = self.p4Frame.getValue()
 
+            parList = [par1, par2, par3, par4]
+            paramListPath = self.srcTopLvlPath + '/Assets/DSPVisParList.dat'
+            datFile = open(paramListPath, 'wb')
+            pickle.dump(parList, datFile)
+            datFile.close()
+
             # If user used a custom script make sure its context
             # gets copied in the assetscript
             assetScriptPath = self.srcTopLvlPath + '/Assets/userCode.py'
@@ -306,7 +316,7 @@ class DspVisualiser:
             # Run asset scripts
             args = [scriptPath, arrayFilePath, str(numChannels),
                     str(numSamples), str(self.sampleRate),
-                    str(par1), str(par2), str(par3), str(par4)]
+                    paramListPath]
 
             processCheck = subprocess.run(args, capture_output=True, text=True)
             if processCheck.returncode != 0:
